@@ -22,6 +22,7 @@ setup(
     entry_points={
         'console_scripts': [
             'clips_node = clips_node.clips_node:main',
+            'clips_client_py = clips_node.clips_client:main',
         ],
     },
 )

@@ -9,7 +9,7 @@
 #include <string>
 
 #define TCPPORT 9002
-#define SERVER_IP "192.168.0.101"  // Cambia a la IP correcta
+#define SERVER_IP "192.168.0.2"  // Cambia a la IP correcta
 
 using namespace std;
 using namespace std::chrono_literals;
@@ -35,8 +35,6 @@ public:
         publisher_ = this->create_publisher<std_msgs::msg::String>("/instruction_msg", 10);
 
         RCLCPP_INFO(this->get_logger(), "Nodo robot_to_main_comm_node inicializado");
-        RCLCPP_INFO(this->get_logger(), "Servicio /request_instruction disponible");
-        RCLCPP_INFO(this->get_logger(), "Publicador /instruction_msg creado");
     }
 
     ~RobotToMainCommNode()
