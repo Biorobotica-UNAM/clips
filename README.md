@@ -3,7 +3,7 @@
 1. **Nodo Python `natural_to_clips`** — Recibe un texto/instrucción en lenguaje natural, por ejemplo **(Ve a la cocina)**, lo convierte en un hecho y lo envía al nodo **`clips_node`**.
 2. **Nodo Python `clips_node`** — Genera aun plan en base a reglas predefinidas y hechos recibidos durante su ejecución mediante el servicio **clips/assert_fact** y lo envía al nodo **robot_comm_node`**.
 3. **Nodo C++ `robot_comm_node`** — Se encarga de almacenar el plan generado por el nodo **`clips_node`** de igual manera genera un servidor que permite a otros equipos (robots) conectarse y solictar los pasos del plan almacenado a través de peticiones **TCP**.  
-3. **Nodo C++ `robot_to_main_comm_node`** — Realiza peticiones **TCP** a través del servicio **/request_instruction** para obtener paso a la vez el plan generado por el nodo **`clips_node`**.
+3. **Nodo C++ `robot_to_main_comm_node`** — Realiza peticiones **TCP** a través del servicio **/request_instruction** para obtener un paso a la vez del plan generado por el nodo **`clips_node`**.
 
 ---
 
@@ -46,6 +46,7 @@ Llamada al launch que ejecuta los nodos principales:
 ros2 ros2 launch clips_launch clips_system.launch.py
 ```
 Llamada al nodo que ejecuta en el equipo del robot:
+**Es importante que se cuenta con la IP del equipo donde se estan ejecutando los nodos principales y se agrega al codigo en `SERVER_IP`**.
 ```
 ros2 run robot_to_main_comm_node robot_to_main_comm_node
 ```
