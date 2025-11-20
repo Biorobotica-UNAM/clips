@@ -46,6 +46,7 @@ Llamada al launch que ejecuta los nodos principales:
 ros2 ros2 launch clips_launch clips_system.launch.py
 ```
 Llamada al nodo que ejecuta en el equipo del robot:
+
 **Es importante que se cuenta con la IP del equipo donde se estan ejecutando los nodos principales y se agrega al codigo en `SERVER_IP`**.
 ```
 ros2 run robot_to_main_comm_node robot_to_main_comm_node
