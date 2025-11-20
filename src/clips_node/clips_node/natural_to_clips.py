@@ -63,16 +63,7 @@ class NaturalToClipsNode(Node):
         # -------------------------
         self.openai_client = OpenAI(api_key="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")
 
-        self.get_logger().info("Nodo NaturalToClips listo.")
-        self.get_logger().info("Puedes usar modo terminal o servicio ROS2.")
-
-        # -------------------------
-        # Modo terminal en hilo aparte
-        # -------------------------
-        import threading
-        thread = threading.Thread(target=self.terminal_loop)
-        thread.daemon = True
-        thread.start()
+        self.get_logger().info("Nodo NaturalToClips listo.")       
 
     # ---------------------------------------------------------
     # FUNCIÓN CENTRAL: Enviar texto → ChatGPT → obtener hechos
@@ -125,23 +116,6 @@ class NaturalToClipsNode(Node):
 
         response.data = f"Hechos generados y enviados:{hechos}"
         return response
-
-    # ---------------------------------------------------------
-    # MODO TERMINAL (paralelo al ejecutor ROS)
-    # ---------------------------------------------------------
-    def terminal_loop(self):
-        while True:
-            texto = input("\n[Terminal] Ingresa una instrucción:\n> ").strip()
-            if not texto:
-                continue
-
-            hechos = self.interpretar_instruccion(texto)
-            print("\nHechos generados:\n", hechos)
-
-            for h in hechos.split("\n"):
-                if h.strip():
-                    self.enviar_a_clips(h.strip())
-
 
 # ---------------------------------------------------------
 def main(args=None):

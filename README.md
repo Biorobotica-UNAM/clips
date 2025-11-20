@@ -1,4 +1,4 @@
-# 🗣️ CLIPS - ROS 2
+# CLIPS - ROS 2
 
 1. **Nodo Python `natural_to_clips`** — Recibe un texto/instrucción en lenguaje natural, por ejemplo **(Ve a la cocina)**, lo convierte en un hecho y lo envía al nodo **`clips_node`**.
 2. **Nodo Python `clips_node`** — Genera aun plan en base a reglas predefinidas y hechos recibidos durante su ejecución mediante el servicio **clips/assert_fact** y lo envía al nodo **robot_comm_node`**.
