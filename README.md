@@ -1,9 +1,9 @@
 # 🗣️ CLIPS - ROS 2
 
-1. **Nodo Python `natural_to_clips`** — Recibe un texto/instruccion en lenguaje narutal, por ejemplo **`(Ve a la cocina)`**, lo convierte en un hecho y lo envia al nodo **`clips_node`**.
-2. **Nodo Python `clips_node`** — Genera aun plan en base a reglas predefinidas y hechos recibidos durante su ejecucion mediante el servicio **clips/assert_fact** y lo envia al nodo **robot_comm_node`**.
-3. **Nodo C++ `robot_comm_node`** — Se encarga de almacenar el plan generado por el nodo **`clips_node`** de igual manera genera un servidor que permite a otros equipos (robots) conectarse y solictar los pasos del plan alamcenado a travez de peticiones **TCP**.  
-3. **Nodo C++ `robot_to_main_comm_node`** — Realiza peticiones **TCP** atravez del servicio **/request_instruction** para obtener paso a la vez el plan generado por el nodo **`clips_node`**.
+1. **Nodo Python `natural_to_clips`** — Recibe un texto/instrucción en lenguaje natural, por ejemplo **(Ve a la cocina)**, lo convierte en un hecho y lo envía al nodo **`clips_node`**.
+2. **Nodo Python `clips_node`** — Genera aun plan en base a reglas predefinidas y hechos recibidos durante su ejecución mediante el servicio **clips/assert_fact** y lo envía al nodo **robot_comm_node`**.
+3. **Nodo C++ `robot_comm_node`** — Se encarga de almacenar el plan generado por el nodo **`clips_node`** de igual manera genera un servidor que permite a otros equipos (robots) conectarse y solictar los pasos del plan almacenado a través de peticiones **TCP**.  
+3. **Nodo C++ `robot_to_main_comm_node`** — Realiza peticiones **TCP** a través del servicio **/request_instruction** para obtener paso a la vez el plan generado por el nodo **`clips_node`**.
 
 ---
 
@@ -37,22 +37,22 @@
   
   ├── srv/ # Cabecera
   
-  ├── String.srv # Servicio personalisado, recibe un string y envia uno de regreso
+  ├── String.srv # Servicio personalizado, recibe un string y envía uno de regreso
 
 
 
-Llamada al launch que ejecuta los nodos princiaples:
+Llamada al launch que ejecuta los nodos principales:
 ```
 ros2 ros2 launch clips_launch clips_system.launch.py
 ```
-Llamada al nodo que ejecuta en el equipo del roboto:
+Llamada al nodo que ejecuta en el equipo del robot:
 ```
 ros2 run robot_to_main_comm_node robot_to_main_comm_node
 ```
 
 Ejemplos de llamada manual a los servicios:
 
-Servicio que envia el mensaje en lenguaje natural
+Servicio que envía el mensaje en lenguaje natural
 ```
 ros2 service call /natural_to_clips/interpret service/srv/String "{data: 've a la cocina'}"
 ```
