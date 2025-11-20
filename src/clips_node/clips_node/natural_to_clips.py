@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from openai import OpenAI
 from std_msgs.msg import String
-from custom_interfaces.srv import String as StringSrv
+from service.srv import String as StringSrv
 
 PROMPT_HECHOS = """
 Eres un traductor estricto de lenguaje natural a hechos CLIPS.
@@ -94,7 +94,19 @@ class NaturalToClipsNode(Node):
         req = StringSrv.Request()
         req.data = hecho
         future = self.assert_cli.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
+
+        future.add_done_callback(
+            lambda fut, h=hecho: self._on_clips_response(fut, h)
+        )
+
+    def _on_clips_response(self, future, hecho):
+        try:
+            result = future.result()
+            self.get_logger().info(
+                f"[CLIPS] Hecho procesado: {hecho} -> Respuesta: {result.data}"
+            )
+        except Exception as e:
+            self.get_logger().error(f"[CLIPS] Error procesando hecho {hecho}: {e}")
 
     # ---------------------------------------------------------
     # CALLBACK del servicio ROS2 para texto natural
@@ -111,7 +123,7 @@ class NaturalToClipsNode(Node):
             if h:
                 self.enviar_a_clips(h)
 
-        response.data = f"Hechos generados y enviados:\n{hechos}"
+        response.data = f"Hechos generados y enviados:{hechos}"
         return response
 
     # ---------------------------------------------------------

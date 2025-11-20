@@ -5,7 +5,7 @@ from std_msgs.msg import String
 from clips import Environment
 from pathlib import Path
 from std_srvs.srv import Trigger
-from custom_interfaces.srv import String as StringSrv
+from service.srv import String as StringSrv
 import threading
 
 

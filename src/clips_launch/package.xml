@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypelayout="1.0"?>
 <package format="3">
-  <name>robot_system_launch</name>
+  <name>clips_launch</name>
   <version>0.0.0</version>
   <description>Launch file for the complete robot system</description>
   <maintainer email="sergio@email.com">sergio</maintainer>

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematype="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>custom_interfaces</name>
+  <name>service</name>
   <version>0.0.0</version>
   <description>Custom interfaces for CLIPS node</description>
   <maintainer email="sergio@example.com">sergio</maintainer>

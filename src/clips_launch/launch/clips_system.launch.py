@@ -19,16 +19,16 @@ def generate_launch_description():
         output='screen'
     )
     
-    # Cliente TCP (robot_to_main_comm_node)
-    # robot_to_main_node = Node(
-    #     package='robot_to_main_comm_node',
-    #     executable='robot_to_main_comm_node',
-    #     name='robot_to_main_comm_node',
-    #     output='screen'
-    # )
+    # Nodo con chatGPT (natural_to_clips)
+    natural_to_clips = Node(
+        package='clips_node',
+        executable='natural_to_clips',
+        name='natural_to_clips',
+        output='screen'
+    )
     
     return LaunchDescription([
         clips_node,
         robot_comm_node,
-        # robot_to_main_node,
+        natural_to_clips,
     ])
