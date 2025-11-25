@@ -2,14 +2,15 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypelayout="1.0"?>
 <package format="3">
   <name>clips_launch</name>
-  <version>0.0.0</version>
-  <description>Launch file for the complete robot system</description>
-  <maintainer email="sergio@email.com">sergio</maintainer>
+  <version>1.0.0</version>
+  <description>Launch files for robot system</description>
+  <maintainer email="tu@email.com">Tu Nombre</maintainer>
   <license>Apache-2.0</license>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <!-- Dependencias de los paquetes que vamos a lanzar -->
   <exec_depend>clips_node</exec_depend>
   <exec_depend>robot_comm_node</exec_depend>
   <exec_depend>robot_to_main_comm_node</exec_depend>
