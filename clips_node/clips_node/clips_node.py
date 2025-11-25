@@ -52,11 +52,13 @@ class ClipsNode(Node):
         self.started = False
 
     def load_rules_from_dat(self):
-        rules_list_file = Path(os.getcwd()) /'src'/'clips_node'/'clips_rules'/'rules_list.dat'
+        rules_list_file = Path(os.getcwd()) /'clips'/'clips_node'/'clips_rules'/'rules_list.dat'
 
         if not rules_list_file.exists():
-            self.get_logger().error(f'Archivo de lista de reglas no encontrado: {rules_list_file}')
-            return
+            rules_list_file = Path(os.getcwd()) /'src'/'Planning'/'clips'/'clips_node'/'clips_rules'/'rules_list.dat'
+            if not rules_list_file.exists():
+                self.get_logger().error(f'Archivo de lista de reglas no encontrado: {rules_list_file}')
+                return
 
         try:
             with open(rules_list_file, 'r', encoding='utf-8') as f:
