@@ -9,7 +9,7 @@
 #include <string>
 
 #define TCPPORT 9002
-#define SERVER_IP "192.168.0.2"  // Cambia a la IP correcta
+#define SERVER_IP "127.0.0.1"  // Cambia a la IP correcta
 
 using namespace std;
 using namespace std::chrono_literals;
