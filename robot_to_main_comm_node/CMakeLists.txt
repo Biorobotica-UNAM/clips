@@ -27,9 +27,9 @@ endif()
 add_executable(robot_to_main_comm_node src/robot_to_main_comm_node.cpp)
 
 # Configure dependencies
-target_include_directories(robot_to_main_comm_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+#target_include_directories(robot_to_main_comm_node PUBLIC
+  #$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+ # $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(robot_to_main_comm_node
   rclcpp
