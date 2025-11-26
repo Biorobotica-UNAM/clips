@@ -1,0 +1,9 @@
+#Python extentions 
+*.pyc
+
+#Cmake constructions 
+
+build/
+install/
+log/
+test/

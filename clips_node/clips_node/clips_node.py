@@ -1,9 +1,11 @@
 import rclpy
+import os
 from rclpy.node import Node
 from std_msgs.msg import String
 from clips import Environment
 from pathlib import Path
 from std_srvs.srv import Trigger
+from service.srv import String as StringSrv
 import threading
 
 
@@ -19,6 +21,13 @@ class ClipsNode(Node):
             Trigger, 
             'clips/start_planning', 
             self.start_planning_callback
+        )
+
+        # Servicio para recibir hechos
+        self.assert_fact_service = self.create_service(
+            StringSrv,  
+            'clips/assert_fact', 
+            self.assert_fact_callback
         )
 
         # Inicializar CLIPS
@@ -43,11 +52,13 @@ class ClipsNode(Node):
         self.started = False
 
     def load_rules_from_dat(self):
-        rules_list_file = Path(__file__).parent / 'clips_rules' / 'rules_list.dat'
+        rules_list_file = Path(os.getcwd()) /'clips'/'clips_node'/'clips_rules'/'rules_list.dat'
 
         if not rules_list_file.exists():
-            self.get_logger().error(f'Archivo de lista de reglas no encontrado: {rules_list_file}')
-            return
+            rules_list_file = Path(os.getcwd()) /'src'/'Planning'/'clips'/'clips_node'/'clips_rules'/'rules_list.dat'
+            if not rules_list_file.exists():
+                self.get_logger().error(f'Archivo de lista de reglas no encontrado: {rules_list_file}')
+                return
 
         try:
             with open(rules_list_file, 'r', encoding='utf-8') as f:
@@ -131,6 +142,30 @@ class ClipsNode(Node):
         except Exception as e:
             self.get_logger().error(f'Error procesando hecho adicional: {e}')
 
+    def assert_fact_callback(self, request, response):
+        """Callback del servicio para recibir hechos"""
+        fact_str = request.data.strip()
+        self.get_logger().info(f'Recibido hecho mediante servicio: {fact_str}')
+
+        try:
+            # Insertar el hecho en CLIPS
+            self.env.assert_string(fact_str)
+            
+            # Ejecutar las reglas en un hilo separado
+            thread = threading.Thread(target=self.run_clips)
+            thread.daemon = True
+            thread.start()
+            
+            response.data = f"Hecho '{fact_str}' procesado exitosamente"
+            self.get_logger().info(f'Hecho procesado via servicio: {fact_str}')
+            
+        except Exception as e:
+            error_msg = f'Error procesando hecho adicional: {e}'
+            response.data = error_msg
+            self.get_logger().error(error_msg)
+            
+        return response
+
     def _process_ros_messages(self):
         """Procesa los hechos de mensajes ROS y los publica"""
         try:
@@ -176,7 +211,6 @@ class ClipsNode(Node):
 
                 elif fact.template.name == 'ros-message':
                     try:
-
                         if not self.started:
                             self.plan_steps.pop()
                             messages_processed -= 1

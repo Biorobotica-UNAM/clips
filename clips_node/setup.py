@@ -22,6 +22,7 @@ setup(
     entry_points={
         'console_scripts': [
             'clips_node = clips_node.clips_node:main',
+            'natural_to_clips = clips_node.natural_to_clips:main'
         ],
     },
 )

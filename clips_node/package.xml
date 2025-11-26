@@ -10,6 +10,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>clipspy</exec_depend>
+  <depend>service</depend>
 
   <export>
     <build_type>ament_python</build_type>
