@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypelayout="1.0"?>
 <package format="3">
-  <name>robot_comm_node</name>
+  <name>plan_manager_node</name>
   <version>1.0.0</version>
   <description>Nodo de comunicación para enviar planes a robots</description>
   <maintainer email="tu@email.com">Tu Nombre</maintainer>
@@ -11,6 +11,7 @@
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
 
   <!-- Dependencia de Boost -->
   <depend>boost</depend>
