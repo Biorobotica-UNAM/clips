@@ -11,14 +11,9 @@
     </node>
 
     <!-- Servidor TCP (C++) - Comunicación con robots -->
-    <node pkg="robot_comm_node" exec="robot_comm_node" name="robot_comm_node" output="screen">
+    <node pkg="plan_manager_node" exec="plan_manager_node" name="plan_manager_node" output="screen">
         <param name="use_sim_time" value="false"/>
     </node>
-
-    <!-- Cliente TCP (C++) - Interfaz para solicitar instrucciones -->
-    <!-- <node pkg="robot_to_main_comm_node" exec="robot_to_main_comm_node" name="robot_to_main_comm_node" output="screen">
-        <param name="use_sim_time" value="false"/>
-    </node> -->
 
     <!-- Nodo con chatGPT (natural_to_clips) -->
     <node pkg="clips_node" exec="natural_to_clips" name="natural_to_clips" output="screen">

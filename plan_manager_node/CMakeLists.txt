@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(robot_comm_node)
+project(plan_manager_node)
 
 # Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
@@ -14,6 +14,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 # Find Boost
 find_package(Boost REQUIRED COMPONENTS system)
@@ -31,26 +32,27 @@ if(BUILD_TESTING)
 endif()
 
 # Create executable
-add_executable(robot_comm_node src/robot_comm_node.cpp)
+add_executable(plan_manager_node src/plan_manager_node.cpp)
 
 # Configure dependencies
-target_include_directories(robot_comm_node PUBLIC
+target_include_directories(plan_manager_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
   
-target_link_libraries(robot_comm_node
+target_link_libraries(plan_manager_node
   ${rclcpp_LIBRARIES}
   ${Boost_LIBRARIES}
 )
 
-ament_target_dependencies(robot_comm_node
+ament_target_dependencies(plan_manager_node
   rclcpp
   std_msgs
+  std_srvs
 )
 
 # Install executables
 install(TARGETS
-  robot_comm_node
+  plan_manager_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -61,7 +63,7 @@ install(TARGETS
 
 # Export dependencies
 ament_export_include_directories(include)
-ament_export_libraries(robot_comm_node)
+ament_export_libraries(plan_manager_node)
 ament_export_dependencies(rclcpp std_msgs)
 
 ament_package()
