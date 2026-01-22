@@ -54,7 +54,7 @@ class NaturalToClipsNode(Node):
         # -------------------------
         self.interpret_srv = self.create_service(
             StringSrv,
-            'natural_to_clips/interpret',
+            '/hri/listener/natural_to_clips/interpret',
             self.interpret_callback
         )
 
