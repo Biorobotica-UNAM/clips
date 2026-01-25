@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from openai import OpenAI
 from std_msgs.msg import String
-from service.srv import String as StringSrv
+from clips_interfaces.srv import String as StringSrv
 
 PROMPT_HECHOS = """
 Eres un traductor estricto de lenguaje natural a hechos CLIPS.
