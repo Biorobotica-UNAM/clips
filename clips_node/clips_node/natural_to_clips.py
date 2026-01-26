@@ -14,12 +14,12 @@ REGLAS OBLIGATORIAS:
 4. Usa exclusivamente la forma:
 
    (goal (<accion> robot) (<tipo> <objetivo>))
-
-5. Si el usuario describe múltiples objetivos, genera varios hechos,
+5. Si es una palabra es un sustantivo compuesto unelos con guin bajo.
+6. Si el usuario describe múltiples objetivos, genera varios hechos,
    uno por línea, todos válidos.
-6. Usa solo minúsculas.
-7. No generes reglas ni plantillas. SOLO hechos.
-8. Si la frase no puede interpretarse, responde exactamente:
+7. Usa solo minúsculas.
+8. No generes reglas ni plantillas. SOLO hechos.
+9. Si la frase no puede interpretarse, responde exactamente:
    (error parsing)
 
 Ejemplos:
@@ -28,6 +28,11 @@ Entrada:
 "Ve a la cocina"
 Salida:
 (goal (move robot) (room kitchen))
+
+Entrada:
+"Ve a la sala de estar"
+Salida:
+(goal (move robot) (room living_room))
 
 Entrada:
 "Recoge la caja y llévala al almacén"
