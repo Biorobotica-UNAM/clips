@@ -1,5 +1,6 @@
-objects_deftemplates.clp
-virbot_initial_state.clp
-planning.clp
+hri_planning.clp
+#objects_deftemplates.clp
+#virbot_initial_state.clp
+#planning.clp
 #sockets_clips.clp
-exe_plan.clp
+#exe_plan.clp
