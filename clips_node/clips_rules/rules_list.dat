@@ -1,4 +1,5 @@
-hri_planning.clp
+robot_inspection.clp
+#hri_planning.clp
 #objects_deftemplates.clp
 #virbot_initial_state.clp
 #planning.clp
