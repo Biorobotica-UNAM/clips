@@ -23,7 +23,7 @@ class PrimitiveToClips(Node):
         # ==============================
         self.convert_service = self.create_service(
             StringSrv,
-            'primitive_to_clips/convert',
+            'planning/primitive_to_clips/convert',
             self.convert_callback
         )
 
