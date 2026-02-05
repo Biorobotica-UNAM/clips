@@ -23,7 +23,7 @@ class PrimitiveToClips(Node):
         # ==============================
         self.convert_service = self.create_service(
             StringSrv,
-            'planning/primitive_to_clips/convert',
+            'primitive_to_clips/convert',
             self.convert_callback
         )
 
@@ -32,7 +32,7 @@ class PrimitiveToClips(Node):
         # ==============================
         self.assert_fact_client = self.create_client(
             StringSrv,
-            'planning/clips/assert_fact'
+            'clips/assert_fact'
         )
 
         self.get_logger().info('Nodo primitive_to_clips iniciado correctamente')
