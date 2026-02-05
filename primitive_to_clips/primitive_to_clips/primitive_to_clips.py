@@ -47,19 +47,25 @@ class PrimitiveToClips(Node):
             if primitive_type == 'PTRANS':
                 obj = p.get('object')
                 if actor and obj:
-                    fact = f'(goal (move {actor}) (objective {obj}))'
+                    fact = (
+                        f'(goal (action move) '
+                        f'(actor {actor}) '
+                        f'(objective {obj}))'
+                    )
                     clips_facts.append(fact)
 
             elif primitive_type == 'WAIT':
                 condition = p.get('condition')
                 if actor and condition:
-                    fact = f'(goal (wait_for {actor}) (objective "{condition}"))'
+                    fact = (
+                        f'(goal (action wait_for) '
+                        f'(actor {actor}) '
+                        f'(objective "{condition}"))'
+                    )
                     clips_facts.append(fact)
 
-            else:
-                self.get_logger().warn(f'Unknown primitive: {primitive_type}')
-
         return clips_facts
+
 
 
     # ======================================================

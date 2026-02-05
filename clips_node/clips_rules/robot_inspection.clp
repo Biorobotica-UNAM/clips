@@ -1,21 +1,107 @@
-(deftemplate plan
-  (slot name)
-  (slot number)
-  (multislot actions)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TEMPLATES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftemplate item
+   (slot type)
+   (slot name)
+   (slot room)
 )
 
-(deffacts robot_inspection
-  (plan (name Justina) (number  1) (actions goto entrance))
+(deftemplate goal
+   (slot action)
+   (slot actor)
+   (slot objective)
+)
 
-  (plan (name Justina) (number  2) (actions wait_for door))
+(deftemplate plan
+   (slot name)
+   (slot number)
+   (multislot actions)
+)
 
-  (plan (name Justina) (number  3) (actions say "My name is Justina. I am ready for robot inspection "))
+(deftemplate plan-building
+   (slot name)
+   (multislot actions)
+)
 
-  (plan (name Justina) (number  4) (actions goto inspection_point))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; INITIAL FACTS (WORLD STATE)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (plan (name Justina) (number  5) (actions say "I have arrived at the inspection point. Please tell me to continue to the exit"))
+(deffacts initial-world
+   (item
+      (type Robot)
+      (name Robot)
+      (room entrance)
+   )
+)
 
-  (plan (name Justina) (number  6) (actions listen_for "continue"))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PLAN INITIALIZATION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (plan (name Justina) (number  7) (actions goto exit))
+(defrule start-plan
+   (not (plan-building))
+   (goal (action ?a) (actor ?r) (objective ?o))
+   =>
+   (assert
+      (plan-building
+         (name ?r)
+         (actions)
+      )
+   )
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; MOVE (PTRANS) RULES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defrule plan-move
+   ?pb <- (plan-building (name ?robot) (actions $?acts))
+   ?r  <- (item (type Robot) (name ?robot) (room ?current))
+   ?g  <- (goal (action move) (actor ?robot) (objective ?target))
+   (test (neq ?current ?target))
+   =>
+   (retract ?g)
+   (modify ?r (room ?target))
+   (modify ?pb (actions $?acts goto ?target))
+)
+
+(defrule plan-move-already-there
+   ?pb <- (plan-building (name ?robot) (actions $?acts))
+   (item (type Robot) (name ?robot) (room ?room))
+   ?g <- (goal (action move) (actor ?robot) (objective ?room))
+   =>
+   (retract ?g)
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; WAIT RULES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defrule plan-wait
+   ?pb <- (plan-building (name ?robot) (actions $?acts))
+   ?g  <- (goal (action wait_for) (actor ?robot) (objective ?condition))
+   =>
+   (retract ?g)
+   (modify ?pb (actions $?acts wait_for ?condition))
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; FINALIZE PLAN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defrule finalize-plan
+   ?pb <- (plan-building (name ?robot) (actions $?acts))
+   (not (goal))
+   =>
+   (retract ?pb)
+   (assert
+      (plan
+         (name ?robot)
+         (number *)
+         (actions $?acts)
+      )
+   )
 )
