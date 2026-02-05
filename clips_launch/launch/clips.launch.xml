@@ -10,14 +10,19 @@
         <param name="use_sim_time" value="false"/>
     </node>
 
-    <!-- Servidor TCP (C++) - Comunicación con robots -->
+    <!-- Servidor TCP (C++) - Comunicación con robots 
     <node pkg="plan_manager_node" exec="plan_manager_node" name="plan_manager_node" output="screen">
         <param name="use_sim_time" value="false"/>
-    </node>
+    </node>-->
 
     <!-- Nodo con chatGPT (natural_to_clips) 
     <node pkg="clips_node" exec="natural_to_clips" name="natural_to_clips" output="screen">
         <param name="use_sim_time" value="false"/>
     </node> -->
+
+    <!-- Nodo Primitive_to_clips - Sistema de planificación -->
+    <node pkg="primitive_to_clips" exec="primitive_to_clips" name="primitive_to_clips" output="screen">
+        <param name="use_sim_time" value="false"/>
+    </node>
 
 </launch>
