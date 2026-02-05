@@ -37,69 +37,72 @@ class PrimitiveToClips(Node):
 
         self.get_logger().info('Nodo primitive_to_clips iniciado correctamente')
 
+    def primitives_to_clips(self, primitives):
+        clips_facts = []
+
+        for p in primitives:
+            primitive_type = p.get('primitive')
+            actor = p.get('actor')
+
+            if primitive_type == 'PTRANS':
+                obj = p.get('object')
+                if actor and obj:
+                    fact = f'(goal (move {actor}) (objective {obj}))'
+                    clips_facts.append(fact)
+
+            elif primitive_type == 'WAIT':
+                condition = p.get('condition')
+                if actor and condition:
+                    fact = f'(goal (wait_for {actor}) (objective "{condition}"))'
+                    clips_facts.append(fact)
+
+            else:
+                self.get_logger().warn(f'Unknown primitive: {primitive_type}')
+
+        return clips_facts
+
+
     # ======================================================
     # Callback del servicio
     # ======================================================
     def convert_callback(self, request, response):
-        self.get_logger().info('Received request')
-
-        # ----------------------------------
-        # 1. Parsear JSON desde string
-        # ----------------------------------
+        # 1. Parsear JSON
         try:
             primitives = json.loads(request.data)
-
-            if not isinstance(primitives, (list, dict)):
-                raise ValueError('JSON must be list or dict')
-
-            self.last_primitives = primitives
-
-            self.get_logger().info(
-                f'Parsed JSON OK ({type(primitives).__name__})'
-            )
-
-        except json.JSONDecodeError as e:
-            response.data = f'ERROR: invalid JSON ({str(e)})'
-            self.get_logger().error(response.data)
-            return response
-
+            if not isinstance(primitives, list):
+                raise ValueError('JSON must be a list of primitives')
         except Exception as e:
-            response.data = f'ERROR: {str(e)}'
-            self.get_logger().error(response.data)
+            response.data = f'ERROR parsing JSON: {str(e)}'
             return response
 
-        # ----------------------------------
-        # 2. Esperar servicio CLIPS
-        # ----------------------------------
+        # 2. Convertir a hechos CLIPS
+        clips_facts = self.primitives_to_clips(primitives)
+        print(clips_facts)
+        if not clips_facts:
+            response.data = 'ERROR: no valid primitives to assert'
+            return response
+
+        # 3. Esperar servicio CLIPS
         if not self.assert_fact_client.wait_for_service(timeout_sec=3.0):
             response.data = 'ERROR: clips/assert_fact service not available'
-            self.get_logger().error(response.data)
             return response
 
-        # ----------------------------------
-        # 3. Enviar JSON original a CLIPS
-        # ----------------------------------
-        clips_request = StringSrv.Request()
-        clips_request.data = request.data  # JSON string original
+        # 4. Enviar cada hecho a CLIPS
+        for fact in clips_facts:
+            req = StringSrv.Request()
+            req.data = fact
 
-        future = self.assert_fact_client.call_async(clips_request)
-        rclpy.spin_until_future_complete(self, future)
+            future = self.assert_fact_client.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
 
-        if future.result() is None:
-            response.data = 'ERROR: no response from CLIPS'
-            self.get_logger().error(response.data)
-            return response
+            if future.result() is None:
+                response.data = f'ERROR asserting fact: {fact}'
+                return response
 
-        # ----------------------------------
-        # 4. Respuesta final
-        # ----------------------------------
-        response.data = (
-            'OK: JSON received, stored and sent to CLIPS | '
-            + future.result().data
-        )
-
-        self.get_logger().info(response.data)
+        # 5. Respuesta final
+        response.data = f'OK: {len(clips_facts)} facts asserted to CLIPS'
         return response
+
 
 
 def main(args=None):
