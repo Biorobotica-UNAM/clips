@@ -6,6 +6,7 @@ from clips import Environment
 from pathlib import Path
 from std_srvs.srv import Trigger
 from clips_interfaces.srv import String as StringSrv
+from clips_interfaces.srv import StringArray
 import threading
 
 
@@ -30,17 +31,16 @@ class ClipsNode(Node):
             self.assert_fact_callback
         )
 
+        self.assert_facts_batch_service = self.create_service(
+            StringArray,
+            'clips/assert_facts_batch',
+            self.assert_facts_batch_callback
+        )
+
+
         # Inicializar CLIPS
         self.env = Environment()
         self.env.clear()
-
-        # Suscriptor de hechos
-        self.subscription = self.create_subscription(
-            String,
-            'clips/facts',
-            self.listener_callback,
-            10
-        )
 
         # Cargar reglas desde .dat
         self.load_rules_from_dat()
@@ -125,23 +125,6 @@ class ClipsNode(Node):
         except Exception as e:
             self.get_logger().error(f'Error ejecutando CLIPS: {e}')
 
-    def listener_callback(self, msg):
-        """Callback para recibir hechos adicionales durante la ejecución"""
-        fact_str = msg.data.strip()
-        self.get_logger().info(f'Recibido hecho durante ejecución: {fact_str}')
-
-        try:
-            # Insertar el hecho en CLIPS
-            self.env.assert_string(fact_str)
-            
-            # Ejecutar las reglas
-            thread = threading.Thread(target=self.run_clips)
-            thread.daemon = True
-            thread.start()
-            
-        except Exception as e:
-            self.get_logger().error(f'Error procesando hecho adicional: {e}')
-
     def assert_fact_callback(self, request, response):
         """Callback del servicio para recibir hechos"""
         fact_str = request.data.strip()
@@ -165,6 +148,33 @@ class ClipsNode(Node):
             self.get_logger().error(error_msg)
             
         return response
+
+    def assert_facts_batch_callback(self, request, response):
+        self.get_logger().info(
+            f'Recibidos {len(request.data)} hechos en batch'
+        )
+
+        try:
+            # Insertar hechos uno por uno
+            for fact_str in request.data:
+                # self.get_logger().info(f'Asserting fact: {fact_str}')
+                self.env.assert_string(fact_str)
+
+            # Ejecutar CLIPS UNA sola vez
+            fired = self.env.run()
+            self.get_logger().info(f'Reglas disparadas: {fired}')
+
+            # Procesar resultados
+            self._process_ros_messages()
+
+            response.successful = True
+
+        except Exception as e:
+            self.get_logger().error(f'Error procesando batch: {e}')
+            response.successful = False
+
+        return response
+
 
     def _process_ros_messages(self):
         """Procesa los hechos de mensajes ROS y los publica"""
@@ -211,29 +221,26 @@ class ClipsNode(Node):
 
                 elif fact.template.name == 'ros-message':
                     try:
-                        if not self.started:
-                            self.plan_steps.pop()
-                            messages_processed -= 1
-                            self.started = True
+                        # if not self.started and (len(self.plan_steps) > 0):
+                        #     self.plan_steps.pop()
+                        #     messages_processed -= 1
+                        #     self.started = True
                             
                         name = "Justina"
 
                         step_num += 1
                         arguments = fact['content']
-                        
                         # Almacenar información del plan
                         if name not in plan_info:
                             plan_info[name] = {'steps': [], 'max_step': 0}
                         
                         plan_info[name]['steps'].append((step_num, arguments))
-                        
                         # Actualizar el paso máximo
                         if step_num > plan_info[name]['max_step']:
                             plan_info[name]['max_step'] = step_num
                         
                         # Formatear el paso del plan
                         step_info = f"Paso {step_num}: {name} {arguments}"
-                        
                         # Acumular el paso
                         self.plan_steps.append(step_info)
                         self.get_logger().info(f'{step_info}')
