@@ -2,11 +2,9 @@
 
 import rclpy
 from rclpy.node import Node
-
 import json
-
 from clips_interfaces.srv import String as StringSrv
-
+from clips_interfaces.srv import StringArray
 
 class PrimitiveToClips(Node):
 
@@ -31,16 +29,17 @@ class PrimitiveToClips(Node):
         # Cliente al servicio de CLIPS
         # ==============================
         self.assert_fact_client = self.create_client(
-            StringSrv,
-            'clips/assert_fact'
+            StringArray,
+            'clips/assert_facts_batch'
         )
+
 
         self.get_logger().info('Nodo primitive_to_clips iniciado correctamente')
 
     def primitives_to_clips(self, primitives):
         clips_facts = []
 
-        for p in primitives:
+        for i, p in enumerate(primitives, start=1):
             primitive_type = p.get('primitive')
             actor = p.get('actor')
 
@@ -48,21 +47,33 @@ class PrimitiveToClips(Node):
                 obj = p.get('object')
                 if actor and obj:
                     fact = (
-                        f'(goal (action move) '
-                        f'(actor {actor}) '
-                        f'(objective {obj}))'
+                        f'(goal (step {i}) '
+                        f'(robot {actor}) '
+                        f'(action move) '
+                        f'(room {"_".join(obj.split())}))'
                     )
                     clips_facts.append(fact)
 
             elif primitive_type == 'WAIT':
                 condition = p.get('condition')
-                if actor and condition:
+                if actor and condition and ("command" in condition):
                     fact = (
-                        f'(goal (action wait_for) '
-                        f'(actor {actor}) '
-                        f'(objective "{condition}"))'
+                        f'(goal (step {i}) '
+                        f'(robot {actor}) '
+                        f'(action listen_for) '
+                        f'(target {"_".join(condition.split())}))'
                     )
                     clips_facts.append(fact)
+                elif actor and condition:
+                    fact = (
+                        f'(goal (step {i}) '
+                        f'(robot {actor}) '
+                        f'(action wait_for) '
+                        f'(objective {"_".join(condition.split())}))'
+                    )
+                    clips_facts.append(fact)
+
+        self.get_logger().info(f'Hechos procesados')
 
         return clips_facts
 
@@ -83,7 +94,7 @@ class PrimitiveToClips(Node):
 
         # 2. Convertir a hechos CLIPS
         clips_facts = self.primitives_to_clips(primitives)
-        print(clips_facts)
+
         if not clips_facts:
             response.data = 'ERROR: no valid primitives to assert'
             return response
@@ -93,17 +104,13 @@ class PrimitiveToClips(Node):
             response.data = 'ERROR: clips/assert_fact service not available'
             return response
 
-        # 4. Enviar cada hecho a CLIPS
-        for fact in clips_facts:
-            req = StringSrv.Request()
-            req.data = fact
+        # 4. Enviar TODOS los hechos a CLIPS en una sola llamada
+        req = StringArray.Request()
+        req.data = clips_facts
 
-            future = self.assert_fact_client.call_async(req)
-            rclpy.spin_until_future_complete(self, future)
+        self.get_logger().info(f'Enviando {len(clips_facts)} hechos a CLIPS')
 
-            if future.result() is None:
-                response.data = f'ERROR asserting fact: {fact}'
-                return response
+        self.assert_fact_client.call_async(req)
 
         # 5. Respuesta final
         response.data = f'OK: {len(clips_facts)} facts asserted to CLIPS'

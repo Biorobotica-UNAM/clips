@@ -1,6 +1,6 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; TEMPLATES
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; -------------------------
+; Templates necesarios
+; -------------------------
 
 (deftemplate item
    (slot type)
@@ -9,99 +9,96 @@
 )
 
 (deftemplate goal
-   (slot action)
-   (slot actor)
+   (slot step   (type INTEGER))
+   (slot action (type SYMBOL))
+   (slot robot  (type SYMBOL))
+   (slot room)
    (slot objective)
+   (slot target)
 )
 
-(deftemplate plan
-   (slot name)
-   (slot number)
-   (multislot actions)
+(deftemplate current-step
+  (slot value (type INTEGER))
 )
 
-(deftemplate plan-building
-   (slot name)
-   (multislot actions)
+(deffacts initial-state
+   (item (type Robot) (name robot) (room entrance))
 )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; INITIAL FACTS (WORLD STATE)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deffacts initial-world
-   (item
-      (type Robot)
-      (name Robot)
-      (room entrance)
-   )
+(deftemplate ros-message
+   (slot step   (type INTEGER))
+   (slot content (type STRING))
 )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; PLAN INITIALIZATION
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ==========================================================
+; Reglas para mover al robot a otra habitación
+; ==========================================================
 
-(defrule start-plan
-   (not (plan-building))
-   (goal (action ?a) (actor ?r) (objective ?o))
+(defrule move-robot
+   ?g <- (goal (step ?s)
+               (action move)
+               (robot ?r)
+               (room ?target))
+   ?i <- (item (type Robot)
+               (name ?r)
+               (room ?current&~?target))
+   (not (goal (step ?s2&:(< ?s2 ?s))))
    =>
-   (assert
-      (plan-building
-         (name ?r)
-         (actions)
-      )
-   )
+   ;; consumir el goal
+   (retract ?g)
+
+   ;; actualizar estado interno del robot
+   (modify ?i (room ?target))
+
+   ;; emitir comando a ROS
+   (assert (ros-message
+      (step ?s)
+      (content (str-cat "goto " ?target))))
 )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; MOVE (PTRANS) RULES
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defrule plan-move
-   ?pb <- (plan-building (name ?robot) (actions $?acts))
-   ?r  <- (item (type Robot) (name ?robot) (room ?current))
-   ?g  <- (goal (action move) (actor ?robot) (objective ?target))
-   (test (neq ?current ?target))
+(defrule robot-already-in-room
+   ?i <- (item (type Robot) (name ?r) (room ?room))
+   ?g <- (goal (step ?s)
+               (action move)
+               (robot ?r)
+               (room ?room))
+   (not (goal (step ?s2&:(< ?s2 ?s))))
    =>
    (retract ?g)
-   (modify ?r (room ?target))
-   (modify ?pb (actions $?acts goto ?target))
+   (assert (ros-message
+      (step ?s)
+      (content (str-cat "already_in_room " ?room))))
 )
 
-(defrule plan-move-already-there
-   ?pb <- (plan-building (name ?robot) (actions $?acts))
-   (item (type Robot) (name ?robot) (room ?room))
-   ?g <- (goal (action move) (actor ?robot) (objective ?room))
-   =>
-   (retract ?g)
+
+; ==========================================================
+; Reglas para esperar y escuchar eventos externos
+; ==========================================================
+
+(defrule wait-for-objective
+?g <- (goal (step ?s)
+            (action wait_for)
+            (robot ?r)
+            (objective ?o))
+(not (goal (step ?s2&:(< ?s2 ?s))))
+=>
+(retract ?g)
+(assert (ros-message
+   (step ?s)
+   (content (str-cat "wait_for " ?o))))
 )
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; WAIT RULES
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defrule plan-wait
-   ?pb <- (plan-building (name ?robot) (actions $?acts))
-   ?g  <- (goal (action wait_for) (actor ?robot) (objective ?condition))
-   =>
-   (retract ?g)
-   (modify ?pb (actions $?acts wait_for ?condition))
-)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; FINALIZE PLAN
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defrule finalize-plan
-   ?pb <- (plan-building (name ?robot) (actions $?acts))
-   (not (goal))
-   =>
-   (retract ?pb)
-   (assert
-      (plan
-         (name ?robot)
-         (number *)
-         (actions $?acts)
-      )
-   )
+(defrule listen-for-target
+?g <- (goal (step ?s)
+            (action listen_for)
+            (robot ?r)
+            (target ?t))
+(not (goal (step ?s2&:(< ?s2 ?s))))
+=>
+(retract ?g)
+(assert (ros-message
+   (step ?s)
+   (content (str-cat "listen_for " ?t))))
 )
