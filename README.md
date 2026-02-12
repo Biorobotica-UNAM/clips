@@ -109,7 +109,9 @@ JSON serializado con lista de primitivas:
 ]
 
 ```
-
+```
+ros2 service call /primitive_to_clips/convert clips_interfaces/srv/String "{data: '[{\"primitive\":\"PTRANS\",\"actor\":\"robot\",\"object\":\"entrance\",\"from\":\"unknown\",\"to\":\"unknown\"},{\"primitive\":\"WAIT\",\"actor\":\"robot\",\"condition\":\"door to be opened\"},{\"primitive\":\"PTRANS\",\"actor\":\"robot\",\"object\":\"inspection point\",\"from\":\"entrance\",\"to\":\"unknown\"},{\"primitive\":\"WAIT\",\"actor\":\"robot\",\"condition\":\"continue command\"},{\"primitive\":\"PTRANS\",\"actor\":\"robot\",\"object\":\"exit\",\"from\":\"inspection point\",\"to\":\"unknown\"}]'}"
+```
 Salida del servicio:
 
 OK: * facts asserted to CLIPS
