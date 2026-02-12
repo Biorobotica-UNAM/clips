@@ -1,4 +1,4 @@
-# 🧠 Planning Pipeline - ROS 2 + CLIPS
+# 🧠 Planning - ROS 2 + CLIPS
 
 ## 📌 Descripción del paquete
 
