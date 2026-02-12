@@ -26,13 +26,13 @@ El sistema permite:
 # 🏗 Arquitectura General
 
 [Semantic Parser / LLM]
-↓
+→
 [primitive_to_clips]
-↓
+→
 [clips_node]
-↓
+→
 [plan_manager_node]
-↓
+→
 [Execution]
 
 ---
@@ -60,10 +60,10 @@ El sistema permite:
 clips_interfaces/        (paquete de mensajes personalizados)
 clips/
 │   ├── primitive_to_clips/
-│ │ └── primitive_to_clips/
+│   │ └── primitive_to_clips/
 │   │     └── primitive_to_clips.py
 │   ├── clips_node/
-│ │ ├── clips_node/
+│   │ └── clips_node/
 │   │   │ └── clips_node.py
 │   │   └── clips_rules/
 │   │       ├── rules_list.dat   # lista de archivos .clp a cargar
@@ -118,11 +118,11 @@ OK: * facts asserted to CLIPS
 
 Encapsula el motor de inferencia CLIPS y se encarga de:
 
-Cargar reglas desde archivos .clp
-Recibir hechos individuales o en batch
-Ejecutar el motor CLIPS
-Construir el plan generado
-Publicar el plan completo
+- Cargar reglas desde archivos .clp
+- Recibir hechos individuales o en batch
+- Ejecutar el motor CLIPS
+- Construir el plan generado
+- Publicar el plan completo
 
 # 📂 Carga de reglas
 
@@ -167,9 +167,12 @@ std_msgs/String
 Formato publicado:
 
 === PLAN COMPLETO: PlanName (N pasos) ===
+
 Paso 1: Justina move entrance
+
 Paso 2: Justina wait_for door_open
-...
+
+
 === FIN DEL PLAN ===
 
 ---
@@ -181,13 +184,13 @@ Gestiona la ejecución del plan generado.
 
 Este nodo:
 
-Recibe el plan completo desde /clips/results
+- Recibe el plan completo desde /clips/results
 
-Extrae cada instrucción
+- Extrae cada instrucción
 
-Almacena el plan internamente
+- Almacena el plan internamente
 
-Entrega instrucciones una por una bajo demanda
+- Entrega instrucciones una por una bajo demanda
 
 ## 📡 Suscripción
 /clips/results
@@ -216,16 +219,6 @@ Topic:
 ---
 Publica la instrucción actual para otros nodos.
 
-
-## Uso:
-```
-chmod +x install_clips_planning.sh
-```
-```
-./install_clips_planning.sh
-```
-
-
 # 🕹️ Cómo usar el sistema
 ## 1. Lanzar los nodos
 ```
@@ -248,4 +241,14 @@ ros2 service call /primitive_to_clips/convert clips_interfaces/srv/String \
 ## 3. Solicitar instrucción
 ```
 ros2 service call /request_instruction std_srvs/srv/Trigger
+```
+
+
+## Intalar requirimientos:
+
+```
+chmod +x install_clips_planning.sh
+```
+```
+./install_clips_planning.sh
 ```
