@@ -58,19 +58,34 @@ El sistema permite:
 ---
 
 clips_interfaces/        (paquete de mensajes personalizados)
+
 clips/
+
 │   ├── primitive_to_clips/
+
 │   │ └── primitive_to_clips/
+
 │   │     └── primitive_to_clips.py
+
 │   ├── clips_node/
+
 │   │ └── clips_node/
+
 │   │   │ └── clips_node.py
+
 │   │   └── clips_rules/
+
 │   │       ├── rules_list.dat   # lista de archivos .clp a cargar
+
 │   │       └── ...              # archivos de reglas .clp
+
 │   └── plan_manager_node/
+
 │     └── src/
+
 │         └── plan_manager_node.cpp
+
+---
 
 # 🧩 Nodo 1: primitive_to_clips (Python)
 
