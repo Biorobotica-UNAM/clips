@@ -9,6 +9,7 @@ from clips_interfaces.srv import StringArray
 import threading
 import queue
 from enum import Enum
+from datetime import datetime
 
 # ============================================================
 # ======================= MAIN NODE ==========================
@@ -42,7 +43,7 @@ class ClipsNode(Node):
         self.robot_name = "Justina"
         self.plan_name = "HRI"
 
-        self.plan_file_path = Path(os.getcwd()) / "plan_execution.log"
+        self.plan_file_path = Path(os.getcwd()) / 'clips' / "plan_execution.log"
         self._initialize_plan_file()
 
     # ============================================================
@@ -55,15 +56,9 @@ class ClipsNode(Node):
             f.write("")  # Limpia el archivo
         self.get_logger().info(f"Archivo de plan reiniciado: {self.plan_file_path}")
 
-    def _append_to_plan_file(self):
-        """Agrega texto al archivo sin borrar contenido previo"""
+    def _write_log(self, text):
         with open(self.plan_file_path, "a", encoding="utf-8") as f:
             f.write(text + "\n")
-
-    def _write_plan_header(self):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        header = f"\n=== NUEVO PLAN [{timestamp}] ==="
-        self._append_to_plan_file(header)
 
     # ============================================================
     # ======================= WORKER ==============================
@@ -177,7 +172,6 @@ class ClipsNode(Node):
         self.current_plan = plan
         self.execution_index = 0
 
-        self._write_plan_header()
         self._publish_complete_plan()
 
     # ============================================================
@@ -194,6 +188,7 @@ class ClipsNode(Node):
 
         msg = String()
         msg.data = f"{header}\n{steps_text}\n{footer}"
+        self._write_log(f"{header}\n{steps_text}\n{footer}")
         self.broadcast_pub.publish(msg)
 
         self.get_logger().info(f"Plan generado con {len(self.current_plan)} pasos")
