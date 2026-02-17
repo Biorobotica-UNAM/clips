@@ -4,6 +4,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 from clips import Environment
 from pathlib import Path
+from std_srvs.srv import Trigger
 from clips_interfaces.srv import String as StringSrv
 from clips_interfaces.srv import StringArray
 import threading
@@ -24,7 +25,8 @@ class ClipsNode(Node):
 
         self.broadcast_pub = self.create_publisher(String, 'clips/results', 10)
 
-        # Servicios SOLO para assert
+        # Servicios
+        self.create_service(Trigger, 'clips/start_planning', self.start_planning_callback)
         self.create_service(StringSrv, 'clips/assert_fact', self.assert_fact_callback)
         self.create_service(StringArray, 'clips/assert_facts_batch', self.assert_facts_batch_callback)
 
@@ -98,12 +100,31 @@ class ClipsNode(Node):
                     if clp_file.exists():
                         self.env.load(str(clp_file))
 
+        # 🔥 DEBUGGING
+        # self.env.eval("(watch rules)")
+        # self.env.eval("(watch facts)")
+        # self.env.eval("(watch activations)")
+        # self.env.eval("(watch focus)")
         self.env.reset()
-        self.get_logger().info(f"Reglas CLIPS cargadas {rules_list_file}")
+        self.get_logger().info(f"Reglas CLIPS cargadas {clp_file}")
 
     # ============================================================
-    # ===================== ASSERT SERVICES ======================
+    # ===================== SERVICES =============================
     # ============================================================
+
+    def start_planning_callback(self, request, response):
+
+        def task():
+            self.current_plan.clear()
+            self.env.reset()
+            self.env.assert_string("(start (name action-planning))")
+            self._run_and_check_plan()
+
+        self.task_queue.put(task)
+
+        response.success = True
+        response.message = "Planificación iniciada"
+        return response
 
     def assert_fact_callback(self, request, response):
 
@@ -151,23 +172,32 @@ class ClipsNode(Node):
         facts_to_retract = []
 
         for fact in self.env.facts():
+            print(fact)
             if fact.template.name == "ros-message":
                 try:
                     step = fact['step']
-                    content = fact['content']
-                    plan.append((step, content))
+                    robot = fact['robot']
+                    action = fact['action']
+                    params = " ".join(f for f in fact['params'])
+                    content = f"{action} {params}"
+                    # content = fact['content']
+                    plan.append(f"Paso {step}: {robot} {content}")
                     facts_to_retract.append(fact)
                 except:
-                    continue
+                    step = fact['step']
+                    content = fact['content']
+                    plan.append(f"Paso {step}: {self.robot_name} {content}")
+                    facts_to_retract.append(fact)
+            elif fact.template.name == "plan-note":
+                robot = fact['robot']
+                state = fact['state']
+                plan.append(f"=={robot} {state}==")     
 
         for f in facts_to_retract:
             f.retract()
 
         if not plan:
             return
-
-        # Ordenar por step real
-        plan.sort(key=lambda x: x[0])
 
         self.current_plan = plan
         self.execution_index = 0
@@ -180,15 +210,11 @@ class ClipsNode(Node):
 
     def _publish_complete_plan(self):
 
-        header = f"== {self.robot_name} START_{self.plan_name} =="
-        steps_text = "\n".join(
-            [f"Paso {step}: {self.robot_name} {content}" for step, content in self.current_plan]
-        )
-        footer = f"== {self.robot_name} FINISH_{self.plan_name} =="
+        steps_text = "\n".join(plan for plan in self.current_plan)
 
         msg = String()
-        msg.data = f"{header}\n{steps_text}\n{footer}"
-        self._write_log(f"{header}\n{steps_text}\n{footer}")
+        msg.data = steps_text
+        self._write_log(msg.data)
         self.broadcast_pub.publish(msg)
 
         self.get_logger().info(f"Plan generado con {len(self.current_plan)} pasos")

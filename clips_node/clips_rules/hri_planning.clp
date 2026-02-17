@@ -1,103 +1,221 @@
-(deftemplate plan
-  (slot name)
-  (slot number)
-  (multislot actions)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; HRI COMPLETE LINEAR PLAN
+;; Uses: phase + stack + step
+;; Entry: (assert (start (name action-planning)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TEMPLATES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftemplate start (slot name))
+
+(deftemplate state
+   (slot name)
+   (slot phase)
 )
 
-(deffacts hri-plan
-  (plan (name Justina) (number  1) (actions Optional_Doorbell Doorbell))
-  (plan (name Justina) (number  2) (actions Optional_Doorbell Detect doorbell))
+(deftemplate stack
+   (multislot states)
+)
 
-  (plan (name Justina) (number  3) (actions Navigation Door))
-  (plan (name Justina) (number  4) (actions Navigation Goto entrance))
-  (plan (name Justina) (number  5) (actions Navigation Align entrance))
+(deftemplate plan-control
+   (slot step)
+)
 
-  (plan (name Justina) (number  6) (actions Optional_Door Door))
-  (plan (name Justina) (number  7) (actions Optional_Door Open Door))
+(deftemplate ros-message
+   (slot step)
+   (slot robot)
+   (slot action)
+   (multislot params)   
+)
 
-  (plan (name Justina) (number  8) (actions Interaction Guest))
-  (plan (name Justina) (number  9) (actions Interaction say greet guest_1))
+(deftemplate plan-note
+   (slot robot)
+   (slot state)
+)
 
-  (plan (name Justina) (number 10) (actions Interaction say ask_name guest_1))
-  (plan (name Justina) (number 11) (actions Interaction listen guest_1))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; INITIALIZATION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (plan (name Justina) (number 12) (actions Interaction say ask_drink guest_1))
-  (plan (name Justina) (number 13) (actions Interaction listen guest_1))
+(defrule initialize
+   ?s <- (start (name action-planning))
+   =>
+   (retract ?s)
 
-  (plan (name Justina) (number 14) (actions Guiding Guest))
-  (plan (name Justina) (number 15) (actions Guiding say follow_me guest_1))
-  (plan (name Justina) (number 16) (actions Guiding Goto living_room))
+   (assert (plan-control (step 1)))
 
-  (plan (name Justina) (number 17) (actions Seating Seat))
-  (plan (name Justina) (number 18) (actions Seating say indicate_seat guest_1))
-  (plan (name Justina) (number 19) (actions Seating Find free_seat))
-  (plan (name Justina) (number 20) (actions Seating Align free_seat))
-  (plan (name Justina) (number 21) (actions Seating say offer_seat guest_1))
+   (assert (stack (states
+      START_HRI
+      RECEIVE_GUEST_1
+      RECEIVE_GUEST_2
+      INTRODUCE_GUESTS
+      RECEIVE_BAG
+      FINISH_HRI)))
 
-  (plan (name Justina) (number 22) (actions Optional_Doorbell Door))
-  (plan (name Justina) (number 23) (actions Optional_Doorbell Detect doorbell))
+   (assert (plan-note (robot Justina) (state START_HRI)))
 
-  (plan (name Justina) (number 24) (actions Navigation Door))
-  (plan (name Justina) (number 25) (actions Navigation Goto entrance))
-  (plan (name Justina) (number 26) (actions Navigation Align entrance))
+   (assert (state (name START_HRI) (phase 1)))
+)
 
-  (plan (name Justina) (number 27) (actions Optional_Door Door))
-  (plan (name Justina) (number 28) (actions Optional_Door Open entrance_door))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GENERIC STEP SENDER
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (plan (name Justina) (number 29) (actions Interaction Guest))
-  (plan (name Justina) (number 30) (actions Interaction say greet guest_2))
+(defrule execute-phase
+   ?pc <- (plan-control (step ?n))
+   ?s  <- (state (name ?name) (phase ?p&~done))
+   =>
+   (bind ?action none)
+   (bind $?params (create$))
+   (bind ?next-phase (+ ?p 1))
 
-  (plan (name Justina) (number 31) (actions Interaction say ask_name guest_2))
-  (plan (name Justina) (number 32) (actions Interaction listen guest_2))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; START_HRI
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (plan (name Justina) (number 33) (actions Interaction say ask_drink guest_2))
-  (plan (name Justina) (number 34) (actions Interaction listen guest_2))
+   (if (and (eq ?name START_HRI) (eq ?p 1)) then
+       (bind ?action say)
+       (bind $?params (create$ start_hri_archive))
+       (bind ?next-phase done))
 
-  (plan (name Justina) (number 35) (actions Describe Guest))
-  (plan (name Justina) (number 36) (actions Describe Look guest_1))
-  (plan (name Justina) (number 37) (actions Describe say describe guest_2))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; RECEIVE_GUEST_1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (plan (name Justina) (number 38) (actions Manipulation Bag))
-  (plan (name Justina) (number 39) (actions Manipulation say request_bag guest_2))
-  (plan (name Justina) (number 40) (actions Manipulation say ready_to_receive guest_2))
-  (plan (name Justina) (number 41) (actions Manipulation Prepare gripper))
-  (plan (name Justina) (number 42) (actions Manipulation Align guest_hand))
-  (plan (name Justina) (number 43) (actions Manipulation Take bag))
-  (plan (name Justina) (number 44) (actions Manipulation Secure bag))
-  (plan (name Justina) (number 45) (actions Manipulation say bag_secured guest_2))
+   (if (eq ?name RECEIVE_GUEST_1) then
+      (switch ?p
+         (case 1 then (bind ?action goto) (bind $?params (create$ entrance)))
+         (case 2 then (bind ?action wait) (bind $?params (create$ person)))
+         (case 3 then (bind ?action say) (bind $?params (create$ ask_name_archive)))
+         (case 4 then (bind ?action listen) (bind $?params (create$ name)))
+         (case 5 then (bind ?action save) (bind $?params (create$ name_1)))
+         (case 6 then (bind ?action say) (bind $?params (create$ ask_drink_archive)))
+         (case 7 then (bind ?action listen) (bind $?params (create$ drink)))
+         (case 8 then (bind ?action save) (bind $?params (create$ drink_1)))
+         (case 9 then (bind ?action say) (bind $?params (create$ follow_me_archive)))
+         (case 10 then (bind ?action goto) (bind $?params (create$ living_room)))
+         (case 11 then (bind ?action find) (bind $?params (create$ empty_seat)))
+         (case 12 then (bind ?action point) (bind $?params (create$ empty_seat)))
+         (case 13 then (bind ?action say) (bind $?params (create$ offer_seat_archive)))
+         (default (bind ?next-phase done))
+      )
+   )
 
-  (plan (name Justina) (number 46) (actions Guiding Guest))
-  (plan (name Justina) (number 47) (actions Guiding say follow_me guest_2))
-  (plan (name Justina) (number 48) (actions Guiding Goto living_room))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; RECEIVE_GUEST_2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (plan (name Justina) (number 49) (actions Seating Seat))
-  (plan (name Justina) (number 50) (actions Seating say indicate_seat guest_2))
-  (plan (name Justina) (number 51) (actions Seating Find free_seat))
-  (plan (name Justina) (number 52) (actions Seating Align free_seat))
-  (plan (name Justina) (number 53) (actions Seating say offer_seat guest_2))
+   (if (eq ?name RECEIVE_GUEST_2) then
+      (switch ?p
+         (case 1 then (bind ?action goto) (bind $?params (create$ entrance)))
+         (case 2 then (bind ?action wait) (bind $?params (create$ person)))
+         (case 3 then (bind ?action say) (bind $?params (create$ ask_name_archive)))
+         (case 4 then (bind ?action listen) (bind $?params (create$ name)))
+         (case 5 then (bind ?action save) (bind $?params (create$ name_2)))
+         (case 6 then (bind ?action say) (bind $?params (create$ ask_drink_archive)))
+         (case 7 then (bind ?action listen) (bind $?params (create$ drink)))
+         (case 8 then (bind ?action save) (bind $?params (create$ drink_2)))
+         (case 9 then (bind ?action say) (bind $?params (create$ memorize_face_archive)))
+         (case 10 then (bind ?action save) (bind $?params (create$ face_1)))
+         (case 11 then (bind ?action say) (bind $?params (create$ follow_me_archive)))
+         (case 12 then (bind ?action goto) (bind $?params (create$ living_room)))
+         (case 13 then (bind ?action find) (bind $?params (create$ empty_seat)))
+         (case 14 then (bind ?action point) (bind $?params (create$ empty_seat)))
+         (case 15 then (bind ?action say) (bind $?params (create$ offer_seat_archive)))
+         (default (bind ?next-phase done))
+      )
+   )
 
-  (plan (name Justina) (number 54) (actions Introduce Guest))
-  (plan (name Justina) (number 55) (actions Introduce say attention guest_1))
-  (plan (name Justina) (number 56) (actions Introduce Look guest_1))
-  (plan (name Justina) (number 57) (actions Introduce say present guest_2))
-  (plan (name Justina) (number 58) (actions Introduce say attention guest_2))
-  (plan (name Justina) (number 59) (actions Introduce Look guest_2))
-  (plan (name Justina) (number 60) (actions Introduce say present guest_1))
-  
-  (plan (name Justina) (number 61) (actions Contact Host))
-  (plan (name Justina) (number 62) (actions Contact say approaching host))
-  (plan (name Justina) (number 63) (actions Contact Goto host))
-  (plan (name Justina) (number 64) (actions Contact Look host))
-  (plan (name Justina) (number 65) (actions Contact say inform_bag host))
-  (plan (name Justina) (number 66) (actions Contact say request_follow host))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; INTRODUCE_GUESTS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (plan (name Justina) (number 67) (actions Following Host))
-  (plan (name Justina) (number 68) (actions Following say following_you host))
-  (plan (name Justina) (number 69) (actions Following Follow host))
+   (if (eq ?name INTRODUCE_GUESTS) then
+      (switch ?p
+         (case 1 then (bind ?action find) (bind $?params (create$ face_2)))
+         (case 2 then (bind ?action say) (bind $?params (create$ introduce_guest_1_archive)))
+         (case 3 then (bind ?action find) (bind $?params (create$ face_1)))
+         (case 4 then (bind ?action say) (bind $?params (create$ introduce_guest_2_archive)))
+         (default (bind ?next-phase done))
+      )
+   )
 
-  (plan (name Justina) (number 70) (actions Delivery Bag))
-  (plan (name Justina) (number 71) (actions Delivery say arrived_drop_location host))
-  (plan (name Justina) (number 72) (actions Delivery say ready_to_drop host))
-  (plan (name Justina) (number 73) (actions Delivery Drop bag))
-  (plan (name Justina) (number 74) (actions Delivery say task_completed host))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; RECEIVE_BAG
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (eq ?name RECEIVE_BAG) then
+      (switch ?p
+         (case 1 then (bind ?action find) (bind $?params (create$ face_2)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ guest_2)))
+         (case 3 then (bind ?action say) (bind $?params (create$ ask_bag_archive)))
+         (case 4 then (bind ?action take) (bind $?params (create$ bag)))
+         (case 5 then (bind ?action find) (bind $?params (create$ host)))
+         (case 6 then (bind ?action approach) (bind $?params (create$ host)))
+         (case 7 then (bind ?action say) (bind $?params (create$ receive_present_archive)))
+         (case 8 then (bind ?action say) (bind $?params (create$ follow_me_archive)))
+         (case 9 then (bind ?action listen) (bind $?params (create$ follow)))
+         (case 10 then (bind ?action follow) (bind $?params (create$ host)))
+         (case 11 then (bind ?action listen) (bind $?params (create$ drop)))
+         (case 12 then (bind ?action drop) (bind $?params (create$ floor)))
+         (default (bind ?next-phase done))
+      )
+   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; FINISH_HRI
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (and (eq ?name FINISH_HRI) (eq ?p 1)) then
+       (bind ?action say)
+       (bind $?params (create$ finish_hri_archive))
+       (bind ?next-phase done))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; EXECUTION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (neq ?action none) then
+      (assert (ros-message
+                (robot Justina)
+                (action ?action)
+                (params $?params)
+                (step ?n)))
+      (modify ?pc (step (+ ?n 1)))
+   )
+
+   (if (eq ?next-phase done) then
+      (modify ?s (phase done))
+   else
+       (modify ?s (phase ?next-phase)))
+
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; MOVE TO NEXT MACRO STATE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defrule next-macro
+   ?s <- (state (name ?name) (phase done))
+   ?st <- (stack (states $?all))
+   =>
+   (retract ?s)
+   (retract ?st)
+
+   (bind $?rest (rest$ $?all))
+
+   (if (> (length$ $?rest) 0) then
+      (bind ?next (nth$ 1 $?rest))
+
+      (assert (stack (states $?rest)))
+
+      ;; GENERAR NOTA DEL NUEVO ESTADO
+      (assert (plan-note
+                (robot Justina)
+                (state ?next)))
+
+      (assert (state (name ?next) (phase 1)))
+   )
 )

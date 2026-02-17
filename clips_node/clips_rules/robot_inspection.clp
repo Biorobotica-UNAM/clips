@@ -22,7 +22,7 @@
 )
 
 (deffacts initial-state
-   (item (type Robot) (name robot) (room entrance))
+   (item (type Robot) (name robot) (room kitcehn))
 )
 
 

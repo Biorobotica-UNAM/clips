@@ -1,7 +1,5 @@
-== Justina START_HRI ==
-Paso 1: Justina already_in_room entrance
+Paso 1: Justina goto entrance
 Paso 2: Justina wait_for door_to_be_opened
 Paso 3: Justina goto inspection_point
 Paso 4: Justina listen_for continue_command
 Paso 5: Justina goto exit
-== Justina FINISH_HRI ==
