@@ -86,7 +86,7 @@
 (retract ?g)
 (assert (ros-message
    (step ?s)
-   (content (str-cat "wait_for " ?o))))
+   (content (str-cat "wait " ?o))))
 )
 
 
@@ -100,5 +100,5 @@
 (retract ?g)
 (assert (ros-message
    (step ?s)
-   (content (str-cat "listen_for " ?t))))
+   (content (str-cat "listen " ?t))))
 )

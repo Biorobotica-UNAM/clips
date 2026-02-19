@@ -45,7 +45,11 @@ class ClipsNode(Node):
         self.robot_name = "Justina"
         self.plan_name = "HRI"
 
-        self.plan_file_path = Path(os.getcwd()) / 'clips' / "plan_execution.log"
+        self.plan_file_path = Path(os.getcwd()) /'src'/'Knowledge'/'knowledge_bank' / "plan_execution.log"
+        if not self.plan_file_path.exists():
+            self.plan_file_path = Path(os.getcwd()) / 'src'/ 'Planning' / 'clips' / "plan_execution.log"
+            if not self.plan_file_path.exists():
+                self.plan_file_path = Path(os.getcwd()) / 'clips' / "plan_execution.log"
         self._initialize_plan_file()
 
     # ============================================================
