@@ -42,7 +42,7 @@
    (assert (plan-started))
    (assert (ros-message
       (step 0)
-      (content "say robot_inspection_test")))
+      (content "say star_robot_inspection")))
 )
 
 ; ==========================================================
@@ -62,12 +62,16 @@
    ;; anunciar acción
    (assert (ros-message
       (step ?s)
-      (content (str-cat "say I'm_going_to_" ?target))))
+      (content (str-cat "say announce_nav_" ?target))))
 
    ;; emitir comando a ROS
    (assert (ros-message
       (step ?s)
       (content (str-cat "goto " ?target))))
+
+   (assert (ros-message
+      (step ?s)
+      (content (str-cat "say announce_nav_end_" ?target))))
 )
 
 ; ==========================================================
@@ -86,7 +90,7 @@
 ;; anunciar
 (assert (ros-message
    (step ?s)
-   (content (str-cat "say Waiting_for_" ?o))))
+   (content "say wait_for_door")))
 
 (assert (ros-message
    (step ?s)
@@ -106,7 +110,7 @@
 ;; anunciar
 (assert (ros-message
    (step ?s)
-   (content (str-cat "say Listening_for_" ?t))))
+   (content "say wait_for_command_continue")))
 
 (assert (ros-message
    (step ?s)
