@@ -8,303 +8,237 @@ from std_srvs.srv import Trigger
 from clips_interfaces.srv import String as StringSrv
 from clips_interfaces.srv import StringArray
 import threading
+import queue
+from enum import Enum
+from datetime import datetime
 
+# ============================================================
+# ======================= MAIN NODE ==========================
+# ============================================================
 
 class ClipsNode(Node):
+
     def __init__(self):
         super().__init__('clips_node')
 
-        self.get_logger().info('Iniciando nodo CLIPS...')
+        self.get_logger().info("Inicializando Plan-Execution Manager Autónomo...")
+
         self.broadcast_pub = self.create_publisher(String, 'clips/results', 10)
 
-        # Servicio para iniciar CLIPS
-        self.start_service = self.create_service(
-            Trigger, 
-            'clips/start_planning', 
-            self.start_planning_callback
-        )
+        # Servicios
+        self.create_service(Trigger, 'clips/start_planning', self.start_planning_callback)
+        self.create_service(StringSrv, 'clips/assert_fact', self.assert_fact_callback)
+        self.create_service(StringArray, 'clips/assert_facts_batch', self.assert_facts_batch_callback)
 
-        # Servicio para recibir hechos
-        self.assert_fact_service = self.create_service(
-            StringSrv,  
-            'clips/assert_fact', 
-            self.assert_fact_callback
-        )
-
-        self.assert_facts_batch_service = self.create_service(
-            StringArray,
-            'clips/assert_facts_batch',
-            self.assert_facts_batch_callback
-        )
-
-
-        # Inicializar CLIPS
+        # CLIPS
         self.env = Environment()
         self.env.clear()
-
-        # Cargar reglas desde .dat
         self.load_rules_from_dat()
-        
-        # Variables para controlar el estado y acumular pasos
-        self.planning_started = False
-        self.plan_steps = []  # Lista para acumular pasos del plan
-        self.current_plan_name = None
-        self.started = False
+
+        # Worker único
+        self.task_queue = queue.Queue()
+        self.worker = threading.Thread(target=self._worker_loop, daemon=True)
+        self.worker.start()
+       
+        self.current_plan = []
+
+        self.robot_name = "Justina"
+        self.plan_name = "HRI"
+
+        self.plan_file_path = Path(os.getcwd()) /'src'/'Knowledge'/'knowledge_bank' / "plan_execution.log"
+        if not self.plan_file_path.exists():
+            self.plan_file_path = Path(os.getcwd()) / 'src'/ 'Planning' / 'clips' / "plan_execution.log"
+            if not self.plan_file_path.exists():
+                self.plan_file_path = Path(os.getcwd()) / 'clips' / "plan_execution.log"
+        self._initialize_plan_file()
+
+    # ============================================================
+    # ===================== FILE FUNCTIONS =======================
+    # ============================================================
+
+    def _initialize_plan_file(self):
+        """Crea o limpia el archivo al iniciar el nodo"""
+        with open(self.plan_file_path, "w", encoding="utf-8") as f:
+            f.write("")  # Limpia el archivo
+        self.get_logger().info(f"Archivo de plan reiniciado: {self.plan_file_path}")
+
+    def _write_log(self, text):
+        with open(self.plan_file_path, "a", encoding="utf-8") as f:
+            f.write(text + "\n")
+
+    # ============================================================
+    # ======================= WORKER ==============================
+    # ============================================================
+
+    def _worker_loop(self):
+        while rclpy.ok():
+            task = self.task_queue.get()
+            if task is None:
+                break
+            try:
+                task()
+            except Exception as e:
+                self.get_logger().error(f"Worker error: {e}")
+            self.task_queue.task_done()
+
+    # ============================================================
+    # ====================== RULE LOADING ========================
+    # ============================================================
 
     def load_rules_from_dat(self):
-        rules_list_file = Path(os.getcwd()) /'clips'/'clips_node'/'clips_rules'/'rules_list.dat'
+        rules_list_file = Path(os.getcwd()) / 'clips' / 'clips_node' / 'clips_rules' / 'rules_list.dat'
 
         if not rules_list_file.exists():
-            rules_list_file = Path(os.getcwd()) /'src'/'Planning'/'clips'/'clips_node'/'clips_rules'/'rules_list.dat'
+            rules_list_file = Path(os.getcwd()) / 'src' / 'Planning' / 'clips' / 'clips_node' / 'clips_rules' / 'rules_list.dat'
             if not rules_list_file.exists():
-                self.get_logger().error(f'Archivo de lista de reglas no encontrado: {rules_list_file}')
+                self.get_logger().error("No se encontró rules_list.dat")
                 return
 
-        try:
-            with open(rules_list_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    clp_path = line.strip()
-                    if clp_path == '' or clp_path.startswith('#'):
-                        continue
+        with open(rules_list_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                clp_path = line.strip()
+                if clp_path and not clp_path.startswith('#'):
                     clp_file = Path(clp_path)
                     if not clp_file.is_absolute():
                         clp_file = rules_list_file.parent / clp_file
                     if clp_file.exists():
-                        # Cargar archivos CLIPS directamente
                         self.env.load(str(clp_file))
-                        self.get_logger().info(f'Reglas cargadas desde: {clp_file}')
-                    else:
-                        self.get_logger().warn(f'Archivo de reglas no encontrado: {clp_file}')
-            
-            self.env.reset()
-            self.get_logger().info('Todas las reglas CLIPS cargadas exitosamente')
-            
-        except Exception as e:
-            self.get_logger().error(f'Error cargando reglas: {e}')
+
+        # 🔥 DEBUGGING
+        # self.env.eval("(watch rules)")
+        # self.env.eval("(watch facts)")
+        # self.env.eval("(watch activations)")
+        # self.env.eval("(watch focus)")
+        self.env.reset()
+        self.get_logger().info(f"Reglas CLIPS cargadas {clp_file}")
+
+    # ============================================================
+    # ===================== SERVICES =============================
+    # ============================================================
 
     def start_planning_callback(self, request, response):
-        """Callback del servicio para iniciar la planificación"""
-        try:
-            if not self.planning_started:
-                # Reiniciar la lista de pasos
-                self.plan_steps = []
-                
-                # Insertar el hecho que inicia la planificación
-                self.env.assert_string("(start action-planning)")
-                
-                # Ejecutar CLIPS en un hilo separado para no bloquear el servicio
-                thread = threading.Thread(target=self.run_clips)
-                thread.daemon = True
-                thread.start()
-                
-                self.planning_started = True
-                self.started = True
-                response.success = True
-                response.message = "CLIPS iniciado con el hecho (start action-planning)"
-                self.get_logger().info('Planificación iniciada mediante servicio')
-            else:
-                response.success = False
-                response.message = "La planificación ya fue iniciada previamente"
-                
-        except Exception as e:
-            response.success = False
-            response.message = f"Error iniciando CLIPS: {str(e)}"
-            self.get_logger().error(f'Error en servicio start_planning: {e}')
-            
+
+        def task():
+            self.current_plan.clear()
+            self.env.reset()
+            self.env.assert_string("(start (name action-planning))")
+            self._run_and_check_plan()
+
+        self.task_queue.put(task)
+
+        response.success = True
+        response.message = "Planificación iniciada"
         return response
 
-    def run_clips(self):
-        """Ejecuta CLIPS en un hilo separado"""
-        try:
-            fired = self.env.run()
-            self.get_logger().info(f'Reglas disparadas: {fired}')
-            
-            # Procesar y publicar mensajes ROS generados por las reglas
-            self._process_ros_messages()
-            
-        except Exception as e:
-            self.get_logger().error(f'Error ejecutando CLIPS: {e}')
-
     def assert_fact_callback(self, request, response):
-        """Callback del servicio para recibir hechos"""
-        fact_str = request.data.strip()
-        self.get_logger().info(f'Recibido hecho mediante servicio: {fact_str}')
 
-        try:
-            # Insertar el hecho en CLIPS
-            self.env.assert_string(fact_str)
-            
-            # Ejecutar las reglas en un hilo separado
-            thread = threading.Thread(target=self.run_clips)
-            thread.daemon = True
-            thread.start()
-            
-            response.data = f"Hecho '{fact_str}' procesado exitosamente"
-            self.get_logger().info(f'Hecho procesado via servicio: {fact_str}')
-            
-        except Exception as e:
-            error_msg = f'Error procesando hecho adicional: {e}'
-            response.data = error_msg
-            self.get_logger().error(error_msg)
-            
+        def task():
+            self.env.assert_string(request.data)
+            self._run_and_check_plan()
+
+        self.task_queue.put(task)
+        response.data = "Hecho recibido"
         return response
 
     def assert_facts_batch_callback(self, request, response):
-        self.get_logger().info(
-            f'Recibidos {len(request.data)} hechos en batch'
-        )
 
-        try:
-            # Insertar hechos uno por uno
-            for fact_str in request.data:
-                # self.get_logger().info(f'Asserting fact: {fact_str}')
-                self.env.assert_string(fact_str)
+        def task():
+            for fact in request.data:
+                self.env.assert_string(fact)
+            self._run_and_check_plan()
 
-            # Ejecutar CLIPS UNA sola vez
-            fired = self.env.run()
-            self.get_logger().info(f'Reglas disparadas: {fired}')
-
-            # Procesar resultados
-            self._process_ros_messages()
-
-            response.successful = True
-
-        except Exception as e:
-            self.get_logger().error(f'Error procesando batch: {e}')
-            response.successful = False
-
+        self.task_queue.put(task)
+        response.successful = True
         return response
 
+    # ============================================================
+    # ===================== CORE EXECUTION =======================
+    # ============================================================
 
-    def _process_ros_messages(self):
-        """Procesa los hechos de mensajes ROS y los publica"""
-        try:
-            messages_processed = 0
-            plan_info = {}  # Diccionario para almacenar información del plan
-            facts_to_retract = []  # Lista para almacenar hechos a retractar después
-            step_num = 0
-            self.plan_steps = []
-            
-            # Primero: recolectar todos los hechos 'plan' sin modificarlos
-            for fact in self.env.facts():
-                if fact.template.name == 'plan':
-                    try:
-                        # Extraer información del hecho plan
-                        name = fact['name'] 
-                        step_num = fact['number'] 
-                        arguments = " ".join(fact['actions'])
-                        
-                        # Almacenar información del plan
-                        if name not in plan_info:
-                            plan_info[name] = {'steps': [], 'max_step': 0}
-                        
-                        plan_info[name]['steps'].append((step_num, arguments))
-                        
-                        # Actualizar el paso máximo
-                        if step_num > plan_info[name]['max_step']:
-                            plan_info[name]['max_step'] = step_num
-                        
-                        # Formatear el paso del plan
-                        step_info = f"Paso {step_num}: {name} {arguments}"
-                        
-                        # Acumular el paso
-                        self.plan_steps.append(step_info)
-                        self.get_logger().info(f'{step_info}')
-                        
-                        # Guardar el hecho para retractarlo después
-                        facts_to_retract.append(fact)
-                        messages_processed += 1
-                        
-                    except Exception as e:
-                        self.get_logger().error(f'Error procesando hecho plan: {e}')
-                        continue  # Continuar con el siguiente hecho
+    def _run_and_check_plan(self):
 
-                elif fact.template.name == 'ros-message':
-                    try:
-                        # if not self.started and (len(self.plan_steps) > 0):
-                        #     self.plan_steps.pop()
-                        #     messages_processed -= 1
-                        #     self.started = True
-                            
-                        name = "Justina"
+        fired = self.env.run()
+        self.get_logger().info(f"Reglas disparadas: {fired}")
 
-                        step_num += 1
-                        arguments = fact['content']
-                        # Almacenar información del plan
-                        if name not in plan_info:
-                            plan_info[name] = {'steps': [], 'max_step': 0}
-                        
-                        plan_info[name]['steps'].append((step_num, arguments))
-                        # Actualizar el paso máximo
-                        if step_num > plan_info[name]['max_step']:
-                            plan_info[name]['max_step'] = step_num
-                        
-                        # Formatear el paso del plan
-                        step_info = f"Paso {step_num}: {name} {arguments}"
-                        # Acumular el paso
-                        self.plan_steps.append(step_info)
-                        self.get_logger().info(f'{step_info}')
-                        
-                        # Guardar el hecho para retractarlo después
-                        facts_to_retract.append(fact)
-                        messages_processed += 1
-                        
-                    except Exception as e:
-                        self.get_logger().error(f'Error procesando hecho plan: {e}')
-                        continue  # Continuar con el siguiente hecho
-            
-            # Segundo: retractar todos los hechos después de procesarlos
-            for fact in facts_to_retract:
+        # Detectar si se generó un plan
+        ros_facts = [f for f in self.env.facts() if f.template.name == "ros-message"]
+
+        if ros_facts:
+            self._extract_plan()
+
+    # ============================================================
+    # ===================== PLAN EXTRACTION ======================
+    # ============================================================
+
+    def _extract_plan(self):
+
+        plan = []
+        facts_to_retract = []
+
+        for fact in self.env.facts():
+            print(fact)
+            if fact.template.name == "ros-message":
                 try:
-                    fact.retract()
-                except Exception as e:
-                    self.get_logger().error(f'Error retractando hecho: {e}')            
-            
-            if messages_processed > 0:
-                # Enviar el plan completo
-                self._send_complete_plan(name, plan_info[name]['max_step'])
-                self.get_logger().info(f'Procesados {messages_processed} mensajes ROS')
-                    
-        except Exception as e:
-            self.get_logger().error(f'Error procesando mensajes ROS: {e}')
+                    step = fact['step']
+                    robot = fact['robot']
+                    action = fact['action']
+                    params = " ".join(f for f in fact['params'])
+                    content = f"{action} {params}"
+                    # content = fact['content']
+                    plan.append(f"Paso {step}: {robot} {content}")
+                    facts_to_retract.append(fact)
+                except:
+                    step = fact['step']
+                    content = fact['content']
+                    plan.append(f"Paso {step}: {self.robot_name} {content}")
+                    facts_to_retract.append(fact)
+            elif fact.template.name == "plan-note":
+                robot = fact['robot']
+                state = fact['state']
+                plan.append(f"=={robot} {state}==")     
 
-    def _send_complete_plan(self, plan_name, total_steps):
-        """Envía todos los pasos del plan acumulados en un solo mensaje"""
-        try:
-            if self.plan_steps:
-                # Crear un mensaje con todos los pasos del plan
-                plan_header = f"=== PLAN COMPLETO: {plan_name} ({total_steps} pasos) ==="
-                steps_text = "\n".join(self.plan_steps)
-                complete_plan = f"{plan_header}\n{steps_text}\n=== FIN DEL PLAN ==="
-                
-                # Publicar el plan completo
-                ros_msg = String()
-                ros_msg.data = complete_plan
-                self.broadcast_pub.publish(ros_msg)
-                
-                self.get_logger().info(f'Plan completo enviado: {plan_name} con {len(self.plan_steps)} pasos')
-                
-                # Limpiar la lista de pasos para el próximo plan
-                self.plan_steps = []
-            else:
-                self.get_logger().warn('Se detectó fin de planificación pero no hay pasos acumulados')
-                
-        except Exception as e:
-            self.get_logger().error(f'Error enviando plan completo: {e}')
+        for f in facts_to_retract:
+            f.retract()
 
+        if not plan:
+            return
+
+        self.current_plan = plan
+        self.execution_index = 0
+
+        self._publish_complete_plan()
+
+    # ============================================================
+    # ===================== PLAN PUBLISH =========================
+    # ============================================================
+
+    def _publish_complete_plan(self):
+
+        steps_text = "\n".join(plan for plan in self.current_plan)
+
+        msg = String()
+        msg.data = steps_text
+        self._write_log(msg.data)
+        self.broadcast_pub.publish(msg)
+
+        self.get_logger().info(f"Plan generado con {len(self.current_plan)} pasos")
+
+# ============================================================
 
 def main(args=None):
     rclpy.init(args=args)
     node = ClipsNode()
-    
+
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info('Apagando nodo CLIPS...')
+        pass
     finally:
+        node.task_queue.put(None)
+        node.worker.join()
         node.destroy_node()
         rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

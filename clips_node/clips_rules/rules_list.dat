@@ -1,7 +1,5 @@
-robot_inspection.clp
-#hri_planning.clp
-#objects_deftemplates.clp
-#virbot_initial_state.clp
-#planning.clp
-#sockets_clips.clp
-#exe_plan.clp
+hri_planning.clp
+#pnp_planning.clp
+#laundry_planning.clp
+#restaurant_planning.clp
+#robot_inspection.clp

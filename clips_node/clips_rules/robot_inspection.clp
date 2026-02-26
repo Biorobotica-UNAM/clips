@@ -22,7 +22,7 @@
 )
 
 (deffacts initial-state
-   (item (type Robot) (name robot) (room entrance))
+   (item (type Robot) (name robot) (room kitcehn))
 )
 
 
@@ -86,7 +86,7 @@
 (retract ?g)
 (assert (ros-message
    (step ?s)
-   (content (str-cat "wait_for " ?o))))
+   (content (str-cat "wait " ?o))))
 )
 
 
@@ -100,5 +100,5 @@
 (retract ?g)
 (assert (ros-message
    (step ?s)
-   (content (str-cat "listen_for " ?t))))
+   (content (str-cat "listen " ?t))))
 )

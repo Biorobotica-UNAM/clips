@@ -81,7 +81,7 @@ clips/
 
 Convierte primitivas en formato JSON a hechos CLIPS del tipo `(goal ...)` y los envía en batch al motor de inferencia.
 
-## 🔧 Servicio
+## 🔧 Servicios
 
 /primitive_to_clips/convert
 ---
@@ -109,7 +109,9 @@ JSON serializado con lista de primitivas:
 ]
 
 ```
-
+```
+ros2 service call /primitive_to_clips/convert clips_interfaces/srv/String "{data: '[{\"primitive\":\"PTRANS\",\"actor\":\"robot\",\"object\":\"entrance\",\"from\":\"unknown\",\"to\":\"unknown\"},{\"primitive\":\"WAIT\",\"actor\":\"robot\",\"condition\":\"door to be opened\"},{\"primitive\":\"PTRANS\",\"actor\":\"robot\",\"object\":\"inspection point\",\"from\":\"entrance\",\"to\":\"unknown\"},{\"primitive\":\"WAIT\",\"actor\":\"robot\",\"condition\":\"continue command\"},{\"primitive\":\"PTRANS\",\"actor\":\"robot\",\"object\":\"exit\",\"from\":\"inspection point\",\"to\":\"unknown\"}]'}"
+```
 Salida del servicio:
 
 OK: * facts asserted to CLIPS
@@ -133,7 +135,17 @@ Encapsula el motor de inferencia CLIPS y se encarga de:
 
 clips/clips_node/clips_rules/rules_list.dat
 ---
-## 1️⃣ Insertar hecho individual
+## 1️⃣ Iniciar planificación
+
+/clips/start_planning
+---
+
+Tipo:
+
+std_srvs/Trigger
+---
+
+## 2️⃣ Insertar hecho individual
 
 /clips/assert_fact
 ---
@@ -143,7 +155,7 @@ Tipo:
 clips_interfaces/srv/String
 ----
 
-## 2️⃣ Inserta múltiples hechos y ejecuta CLIPS una sola vez.
+## 3️⃣ Inserta múltiples hechos y ejecuta CLIPS una sola vez.
 
 /clips/assert_facts_batch
 ---
@@ -167,7 +179,7 @@ Tipo:
 std_msgs/String
 ---
 
-Formato publicado:
+Formato publicado y guardado en el archivo plan_execution.log:
 
 === PLAN COMPLETO: PlanName (N pasos) ===
 
