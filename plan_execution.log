@@ -1,5 +1,11 @@
+Paso 0: Justina say robot_inspection_test
+Paso 1: Justina say I'm_going_to_entrance
 Paso 1: Justina goto entrance
+Paso 2: Justina say Waiting_for_door_to_be_opened
 Paso 2: Justina wait_for door_to_be_opened
+Paso 3: Justina say I'm_going_to_inspection_point
 Paso 3: Justina goto inspection_point
+Paso 4: Justina say Listening_for_continue_command
 Paso 4: Justina listen_for continue_command
+Paso 5: Justina say I'm_going_to_exit
 Paso 5: Justina goto exit

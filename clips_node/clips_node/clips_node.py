@@ -21,7 +21,7 @@ class ClipsNode(Node):
     def __init__(self):
         super().__init__('clips_node')
 
-        self.get_logger().info("Inicializando Plan-Execution Manager Autónomo...")
+        self.get_logger().info("Inicializando CLIPS Manager Autónomo...")
 
         self.broadcast_pub = self.create_publisher(String, 'clips/results', 10)
 
