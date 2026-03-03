@@ -42,7 +42,7 @@
    (assert (plan-started))
    (assert (ros-message
       (step 0)
-      (content "say star_robot_inspection")))
+      (content "say start_robot_inspection")))
 )
 
 ; ==========================================================
