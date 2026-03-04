@@ -2,6 +2,8 @@
 ; Templates necesarios
 ; -------------------------
 
+(deftemplate plan-started)
+
 (deftemplate item
    (slot type)
    (slot name)
@@ -22,13 +24,25 @@
 )
 
 (deffacts initial-state
-   (item (type Robot) (name robot) (room kitcehn))
+   (item (type Robot) (name robot) (room kitchen))
 )
 
 
 (deftemplate ros-message
    (slot step   (type INTEGER))
    (slot content (type STRING))
+)
+
+(defrule announce-plan-start
+   (declare (salience 1000))
+   ?g <- (goal (step ?s))
+   (not (goal (step ?s2&:(< ?s2 ?s))))
+   (not (plan-started))
+   =>
+   (assert (plan-started))
+   (assert (ros-message
+      (step 0)
+      (content "say start_robot_inspection")))
 )
 
 ; ==========================================================
@@ -40,37 +54,25 @@
                (action move)
                (robot ?r)
                (room ?target))
-   ?i <- (item (type Robot)
-               (name ?r)
-               (room ?current&~?target))
    (not (goal (step ?s2&:(< ?s2 ?s))))
    =>
    ;; consumir el goal
    (retract ?g)
 
-   ;; actualizar estado interno del robot
-   (modify ?i (room ?target))
+   ;; anunciar acción
+   (assert (ros-message
+      (step ?s)
+      (content (str-cat "say announce_nav_" ?target))))
 
    ;; emitir comando a ROS
    (assert (ros-message
       (step ?s)
       (content (str-cat "goto " ?target))))
-)
 
-(defrule robot-already-in-room
-   ?i <- (item (type Robot) (name ?r) (room ?room))
-   ?g <- (goal (step ?s)
-               (action move)
-               (robot ?r)
-               (room ?room))
-   (not (goal (step ?s2&:(< ?s2 ?s))))
-   =>
-   (retract ?g)
    (assert (ros-message
       (step ?s)
-      (content (str-cat "already_in_room " ?room))))
+      (content (str-cat "say announce_nav_end_" ?target))))
 )
-
 
 ; ==========================================================
 ; Reglas para esperar y escuchar eventos externos
@@ -84,9 +86,15 @@
 (not (goal (step ?s2&:(< ?s2 ?s))))
 =>
 (retract ?g)
+
+;; anunciar
 (assert (ros-message
    (step ?s)
-   (content (str-cat "wait " ?o))))
+   (content "say wait_for_door")))
+
+(assert (ros-message
+   (step ?s)
+   (content (str-cat "wait_for " ?o))))
 )
 
 
@@ -98,7 +106,13 @@
 (not (goal (step ?s2&:(< ?s2 ?s))))
 =>
 (retract ?g)
+
+;; anunciar
 (assert (ros-message
    (step ?s)
-   (content (str-cat "listen " ?t))))
+   (content "say wait_for_command_continue")))
+
+(assert (ros-message
+   (step ?s)
+   (content (str-cat "listen_for " ?t))))
 )

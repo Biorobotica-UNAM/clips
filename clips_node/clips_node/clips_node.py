@@ -21,7 +21,7 @@ class ClipsNode(Node):
     def __init__(self):
         super().__init__('clips_node')
 
-        self.get_logger().info("Inicializando Plan-Execution Manager Autónomo...")
+        self.get_logger().info("Inicializando CLIPS Manager Autónomo...")
 
         self.broadcast_pub = self.create_publisher(String, 'clips/results', 10)
 
@@ -215,6 +215,7 @@ class ClipsNode(Node):
     def _publish_complete_plan(self):
 
         steps_text = "\n".join(plan for plan in self.current_plan)
+        steps_text += (f"\nPaso {len(self.current_plan)}: {self.robot_name} say test_completed ")
 
         msg = String()
         msg.data = steps_text
