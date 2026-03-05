@@ -77,7 +77,7 @@
 
    (if (and (eq ?name START_HRI) (eq ?p 1)) then
        (bind ?action say)
-       (bind $?params (create$ start_hri_archive))
+       (bind $?params (create$ start_hri))
        (bind ?next-phase done))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -88,17 +88,17 @@
       (switch ?p
          (case 1 then (bind ?action goto) (bind $?params (create$ entrance)))
          (case 2 then (bind ?action wait) (bind $?params (create$ person)))
-         (case 3 then (bind ?action say) (bind $?params (create$ ask_name_archive)))
+         (case 3 then (bind ?action say) (bind $?params (create$ ask_name)))
          (case 4 then (bind ?action listen) (bind $?params (create$ name)))
          (case 5 then (bind ?action save) (bind $?params (create$ name_1)))
-         (case 6 then (bind ?action say) (bind $?params (create$ ask_drink_archive)))
+         (case 6 then (bind ?action say) (bind $?params (create$ ask_drink)))
          (case 7 then (bind ?action listen) (bind $?params (create$ drink)))
          (case 8 then (bind ?action save) (bind $?params (create$ drink_1)))
-         (case 9 then (bind ?action say) (bind $?params (create$ follow_me_archive)))
+         (case 9 then (bind ?action say) (bind $?params (create$ follow_me)))
          (case 10 then (bind ?action goto) (bind $?params (create$ living_room)))
          (case 11 then (bind ?action find) (bind $?params (create$ empty_seat)))
          (case 12 then (bind ?action point) (bind $?params (create$ empty_seat)))
-         (case 13 then (bind ?action say) (bind $?params (create$ offer_seat_archive)))
+         (case 13 then (bind ?action say) (bind $?params (create$ offer_seat)))
          (default (bind ?next-phase done))
       )
    )
@@ -111,19 +111,19 @@
       (switch ?p
          (case 1 then (bind ?action goto) (bind $?params (create$ entrance)))
          (case 2 then (bind ?action wait) (bind $?params (create$ person)))
-         (case 3 then (bind ?action say) (bind $?params (create$ ask_name_archive)))
+         (case 3 then (bind ?action say) (bind $?params (create$ ask_name)))
          (case 4 then (bind ?action listen) (bind $?params (create$ name)))
          (case 5 then (bind ?action save) (bind $?params (create$ name_2)))
-         (case 6 then (bind ?action say) (bind $?params (create$ ask_drink_archive)))
+         (case 6 then (bind ?action say) (bind $?params (create$ ask_drink)))
          (case 7 then (bind ?action listen) (bind $?params (create$ drink)))
          (case 8 then (bind ?action save) (bind $?params (create$ drink_2)))
-         (case 9 then (bind ?action say) (bind $?params (create$ memorize_face_archive)))
+         (case 9 then (bind ?action say) (bind $?params (create$ memorize_face)))
          (case 10 then (bind ?action save) (bind $?params (create$ face_1)))
-         (case 11 then (bind ?action say) (bind $?params (create$ follow_me_archive)))
+         (case 11 then (bind ?action say) (bind $?params (create$ follow_me)))
          (case 12 then (bind ?action goto) (bind $?params (create$ living_room)))
          (case 13 then (bind ?action find) (bind $?params (create$ empty_seat)))
          (case 14 then (bind ?action point) (bind $?params (create$ empty_seat)))
-         (case 15 then (bind ?action say) (bind $?params (create$ offer_seat_archive)))
+         (case 15 then (bind ?action say) (bind $?params (create$ offer_seat)))
          (default (bind ?next-phase done))
       )
    )
@@ -135,9 +135,9 @@
    (if (eq ?name INTRODUCE_GUESTS) then
       (switch ?p
          (case 1 then (bind ?action find) (bind $?params (create$ face_2)))
-         (case 2 then (bind ?action say) (bind $?params (create$ introduce_guest_1_archive)))
+         (case 2 then (bind ?action say) (bind $?params (create$ introduce_guest_1)))
          (case 3 then (bind ?action find) (bind $?params (create$ face_1)))
-         (case 4 then (bind ?action say) (bind $?params (create$ introduce_guest_2_archive)))
+         (case 4 then (bind ?action say) (bind $?params (create$ introduce_guest_2)))
          (default (bind ?next-phase done))
       )
    )
@@ -150,12 +150,12 @@
       (switch ?p
          (case 1 then (bind ?action find) (bind $?params (create$ face_2)))
          (case 2 then (bind ?action approach) (bind $?params (create$ guest_2)))
-         (case 3 then (bind ?action say) (bind $?params (create$ ask_bag_archive)))
+         (case 3 then (bind ?action say) (bind $?params (create$ ask_bag)))
          (case 4 then (bind ?action take) (bind $?params (create$ bag)))
          (case 5 then (bind ?action find) (bind $?params (create$ host)))
          (case 6 then (bind ?action approach) (bind $?params (create$ host)))
-         (case 7 then (bind ?action say) (bind $?params (create$ receive_present_archive)))
-         (case 8 then (bind ?action say) (bind $?params (create$ follow_me_archive)))
+         (case 7 then (bind ?action say) (bind $?params (create$ receive_present)))
+         (case 8 then (bind ?action say) (bind $?params (create$ follow_me)))
          (case 9 then (bind ?action listen) (bind $?params (create$ follow)))
          (case 10 then (bind ?action follow) (bind $?params (create$ host)))
          (case 11 then (bind ?action listen) (bind $?params (create$ drop)))
@@ -170,7 +170,7 @@
 
    (if (and (eq ?name FINISH_HRI) (eq ?p 1)) then
        (bind ?action say)
-       (bind $?params (create$ finish_hri_archive))
+       (bind $?params (create$ finish_hri))
        (bind ?next-phase done))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

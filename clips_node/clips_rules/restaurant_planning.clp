@@ -70,7 +70,7 @@
 
    (if (and (eq ?name START_RESTAURANT) (eq ?p 1)) then
        (bind ?action say)
-       (bind $?params (create$ start_restaurant_archive))
+       (bind $?params (create$ start_restaurant))
        (bind ?next-phase done))
 
    (if (and (eq ?name SAVE_STARTING_LOCATION) (eq ?p 1)) then
@@ -198,7 +198,7 @@
 
    (if (and (eq ?name FINISH_RESTAURANT) (eq ?p 1)) then
        (bind ?action say)
-       (bind $?params (create$ finish_restaurant_archive))
+       (bind $?params (create$ finish_restaurant))
        (bind ?next-phase done))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

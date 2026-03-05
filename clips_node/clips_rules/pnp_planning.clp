@@ -74,7 +74,7 @@
 
    (if (and (eq ?name START_PNP) (eq ?p 1)) then
        (bind ?action say)
-       (bind $?params (create$ start_pnp_archive))
+       (bind $?params (create$ start_pnp))
        (bind ?next-phase done))
 
    (if (eq ?name NAVIGATE_TO_KITCHEN) then
@@ -199,7 +199,7 @@
 
    (if (and (eq ?name FINISH_PNP) (eq ?p 1)) then
        (bind ?action say)
-       (bind $?params (create$ finish_pnp_archive))
+       (bind $?params (create$ finish_pnp))
        (bind ?next-phase done))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

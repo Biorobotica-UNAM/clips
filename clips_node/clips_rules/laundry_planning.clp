@@ -71,7 +71,7 @@
 
    (if (and (eq ?name START_LAUNDRY) (eq ?p 1)) then
        (bind ?action say)
-       (bind $?params (create$ start_laundry_archive))
+       (bind $?params (create$ start_laundry))
        (bind ?next-phase done))
 
    (if (eq ?name NAVIGATE_TO_LAUNDRY) then
@@ -192,7 +192,7 @@
 
    (if (and (eq ?name FINISH_LAUNDRY) (eq ?p 1)) then
        (bind ?action say)
-       (bind $?params (create$ finish_laundry_archive))
+       (bind $?params (create$ finish_laundry))
        (bind ?next-phase done))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
