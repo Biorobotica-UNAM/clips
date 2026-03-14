@@ -1,5 +1,5 @@
-#hri_planning.clp
+hri_planning.clp
 #pnp_planning.clp
 #laundry_planning.clp
 #restaurant_planning.clp
-robot_inspection.clp
+#robot_inspection.clp
