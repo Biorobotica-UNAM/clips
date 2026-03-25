@@ -89,7 +89,7 @@
          (case 1 then (bind ?action say) (bind $?params (create$ announce_nav_entrance)))
          (case 2 then (bind ?action goto) (bind $?params (create$ entrance)))
          (case 3 then (bind ?action say) (bind $?params (create$ announce_nav_end_entrance)))
-         (case 4 then (bind ?action wait) (bind $?params (create$ person)))
+         (case 4 then (bind ?action find) (bind $?params (create$ person)))
          (case 5 then (bind ?action focus) (bind $?params (create$ person)))
          (case 6 then (bind ?action say) (bind $?params (create$ ask_name)))
          (case 7 then (bind ?action listen) (bind $?params (create$ name)))
