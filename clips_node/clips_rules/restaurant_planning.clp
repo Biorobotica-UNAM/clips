@@ -81,7 +81,7 @@
    (if (eq ?name TAKE_COSTUMER_1_ORDER) then
       (switch ?p
          ;; acercarse al cliente
-         (case 1 then (bind ?action find) (bind $?params (create$ calling_costumer)))
+         (case 1 then (bind ?action find) (bind $?params (create$ person_calling_costumer)))
          (case 2 then (bind ?action approach) (bind $?params (create$ calling_costumer)))
          (case 3 then (bind ?action save) (bind $?params (create$ costumer_1)))
          (case 4 then (bind ?action say) (bind $?params (create$ introduce_waitress)))
@@ -95,7 +95,7 @@
          (case 10  then (bind ?action goto) (bind $?params (create$ kitchen_bar)))
          (case 11 then (bind ?action say) (bind $?params (create$ announce_nav_end_kitchen_bar)))
          (case 12 then (bind ?action align) (bind $?params (create$ kitchen_bar)))
-         (case 13 then (bind ?action find) (bind $?params (create$ barman)))
+         (case 13 then (bind ?action find) (bind $?params (create$ person_barman)))
          (case 14 then (bind ?action say) (bind $?params (create$ send_order order_1)))
 
          ;; recoger bebidas/comida
@@ -104,7 +104,7 @@
          (case 17 then (bind ?action find) (bind $?params (create$ {order_1[1]})))
          (case 18 then (bind ?action take) (bind $?params (create$ {order_1[1]})))
 
-         (case 19 then (bind ?action find) (bind $?params (create$ tray)))
+         (case 19 then (bind ?action find) (bind $?params (create$ object_tray)))
          (case 20 then (bind ?action align) (bind $?params (create$ tray)))
          (case 21 then (bind ?action drop) (bind $?params (create$ tray)))
 
@@ -124,7 +124,7 @@
          (case 32 then (bind ?action goto) (bind $?params (create$ costumer_1)))
          (case 33 then (bind ?action say) (bind $?params (create$ announce_nav_end_costumer_1)))
          (case 34 then (bind ?action align) (bind $?params (create$ table)))
-         (case 35 then (bind ?action find) (bind $?params (create$ restaurant_table_drops)))
+         (case 35 then (bind ?action find) (bind $?params (create$ object_restaurant_table_drops)))
          (case 36 then (bind ?action drop) (bind $?params (create$ table)))
 
          (case 37 then (bind ?action find) (bind $?params (create$ {order_1[0]})))
@@ -145,7 +145,7 @@
 
    (if (eq ?name TAKE_COSTUMER_2_ORDER) then
       (switch ?p
-         (case 1 then (bind ?action find) (bind $?params (create$ calling_costumer)))
+         (case 1 then (bind ?action find) (bind $?params (create$ person_calling_costumer)))
          (case 2 then (bind ?action approach) (bind $?params (create$ calling_costumer)))
          (case 3 then (bind ?action save) (bind $?params (create$ costumer_2)))
          (case 4 then (bind ?action say) (bind $?params (create$ introduce_waitress)))
@@ -158,7 +158,7 @@
          (case 10  then (bind ?action goto) (bind $?params (create$ kitchen_bar)))
          (case 11 then (bind ?action say) (bind $?params (create$ announce_nav_end_kitchen_bar)))
          (case 12 then (bind ?action align) (bind $?params (create$ kitchen_bar)))
-         (case 13 then (bind ?action find) (bind $?params (create$ barman)))
+         (case 13 then (bind ?action find) (bind $?params (create$ person_barman)))
          (case 14 then (bind ?action say) (bind $?params (create$ send_order order_2)))
 
          (case 15 then (bind ?action find) (bind $?params (create$ {order_2[0]})))
@@ -166,7 +166,7 @@
          (case 17 then (bind ?action find) (bind $?params (create$ {order_2[1]})))
          (case 18 then (bind ?action take) (bind $?params (create$ {order_2[1]})))
 
-         (case 19 then (bind ?action find) (bind $?params (create$ tray)))
+         (case 19 then (bind ?action find) (bind $?params (create$ object_tray)))
          (case 20 then (bind ?action align) (bind $?params (create$ tray)))
          (case 21 then (bind ?action drop) (bind $?params (create$ tray)))
 
@@ -185,7 +185,7 @@
          (case 32 then (bind ?action goto) (bind $?params (create$ costumer_2)))
          (case 33 then (bind ?action say) (bind $?params (create$ announce_nav_end_costumer_2)))
          (case 34 then (bind ?action align) (bind $?params (create$ table)))
-         (case 35 then (bind ?action find) (bind $?params (create$ restaurant_table_drops)))
+         (case 35 then (bind ?action find) (bind $?params (create$ object_restaurant_table_drops)))
          (case 36 then (bind ?action drop) (bind $?params (create$ table)))
 
          (case 37 then (bind ?action find) (bind $?params (create$ {order_2[0]})))

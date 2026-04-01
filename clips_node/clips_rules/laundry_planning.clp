@@ -90,10 +90,10 @@
          (case 2 then (bind ?action check) (bind $?params (create$ laundry_door)))
          (case 3 then (bind ?action align) (bind $?params (create$ laundry_machine)))
 
-         (case 4 then (bind ?action find)  (bind $?params (create$ shirt_1)))
-         (case 5 then (bind ?action take)  (bind $?params (create$ shirt_1)))
-         (case 6 then (bind ?action find)  (bind $?params (create$ shirt_2)))
-         (case 7 then (bind ?action take)  (bind $?params (create$ shirt_2)))
+         (case 4 then (bind ?action find)  (bind $?params (create$ object_shirt_1)))
+         (case 5 then (bind ?action take)  (bind $?params (create$ object_shirt_1)))
+         (case 6 then (bind ?action find)  (bind $?params (create$ object_shirt_2)))
+         (case 7 then (bind ?action take)  (bind $?params (create$ object_shirt_2)))
 
          (case 8 then (bind ?action say) (bind $?params (create$ announce_nav_laundry_basket)))
          (case 9 then (bind ?action goto)  (bind $?params (create$ laundry_basket)))
@@ -107,9 +107,9 @@
          (case 16 then (bind ?action say) (bind $?params (create$ announce_nav_end_laundry_machine)))
          (case 17 then (bind ?action align) (bind $?params (create$ laundry_machine)))
 
-         (case 18 then (bind ?action find) (bind $?params (create$ shirt_3)))
-         (case 19 then (bind ?action take) (bind $?params (create$ shirt_3)))
-         (case 20 then (bind ?action find) (bind $?params (create$ shirt_4)))
+         (case 18 then (bind ?action find) (bind $?params (create$ object_shirt_3)))
+         (case 19 then (bind ?action take) (bind $?params (create$ object_shirt_3)))
+         (case 20 then (bind ?action find) (bind $?params (create$ object_shirt_4)))
          (case 21 then (bind ?action take) (bind $?params (create$ shirt_4)))
 
          (case 22 then (bind ?action say) (bind $?params (create$ announce_nav_laundry_basket)))
@@ -125,7 +125,7 @@
 
    (if (eq ?name MOVE_BASKET) then
       (switch ?p
-         (case 1 then (bind ?action find) (bind $?params (create$ basket_handles)))
+         (case 1 then (bind ?action find) (bind $?params (create$ object_basket_handles)))
          (case 2 then (bind ?action take) (bind $?params (create$ basket_handles)))
          (case 3 then (bind ?action say) (bind $?params (create$ announce_nav_laundry_table)))
          (case 4 then (bind ?action goto) (bind $?params (create$ laundry_table)))
@@ -140,7 +140,7 @@
       (switch ?p
 
          ;; SHIRT 1
-         (case 1  then (bind ?action find) (bind $?params (create$ shirt_1)))
+         (case 1  then (bind ?action find) (bind $?params (create$ object_shirt_1)))
          (case 2  then (bind ?action take) (bind $?params (create$ shirt_1)))
          (case 3  then (bind ?action say) (bind $?params (create$ announce_nav_laundry_table)))
          (case 4  then (bind ?action goto) (bind $?params (create$ laundry_table)))
@@ -153,7 +153,7 @@
          (case 11 then (bind ?action say) (bind $?params (create$ announce_nav_end_laundry_table_floor)))
 
          ;; SHIRT 2
-         (case 12 then (bind ?action find) (bind $?params (create$ shirt_2)))
+         (case 12 then (bind ?action find) (bind $?params (create$ object_shirt_2)))
          (case 13 then (bind ?action take) (bind $?params (create$ shirt_2)))
          (case 14 then (bind ?action say) (bind $?params (create$ announce_nav_laundry_table)))
          (case 15 then (bind ?action goto) (bind $?params (create$ laundry_table)))
@@ -166,7 +166,7 @@
          (case 22 then (bind ?action say) (bind $?params (create$ announce_nav_end_laundry_table_floor)))
 
          ;; SHIRT 3
-         (case 23 then (bind ?action find) (bind $?params (create$ shirt_3)))
+         (case 23 then (bind ?action find) (bind $?params (create$ object_shirt_3)))
          (case 24 then (bind ?action take) (bind $?params (create$ shirt_3)))
          (case 25 then (bind ?action say) (bind $?params (create$ announce_nav_laundry_table)))
          (case 26 then (bind ?action goto) (bind $?params (create$ laundry_table)))
@@ -179,7 +179,7 @@
          (case 33 then (bind ?action say) (bind $?params (create$ announce_nav_end_laundry_table_floor)))
 
          ;; SHIRT 4
-         (case 34 then (bind ?action find) (bind $?params (create$ shirt_4)))
+         (case 34 then (bind ?action find) (bind $?params (create$ object_shirt_4)))
          (case 35 then (bind ?action take) (bind $?params (create$ shirt_4)))
          (case 36 then (bind ?action say) (bind $?params (create$ announce_nav_laundry_table)))
          (case 37 then (bind ?action goto) (bind $?params (create$ laundry_table)))
@@ -192,7 +192,7 @@
          (case 44 then (bind ?action say) (bind $?params (create$ announce_nav_end_laundry_table_floor)))
 
          ;; SHIRT 5
-         (case 45 then (bind ?action find) (bind $?params (create$ shirt_5)))
+         (case 45 then (bind ?action find) (bind $?params (create$ object_shirt_5)))
          (case 46 then (bind ?action take) (bind $?params (create$ shirt_5)))
          (case 47 then (bind ?action say) (bind $?params (create$ announce_nav_laundry_table)))
          (case 48 then (bind ?action goto) (bind $?params (create$ laundry_table)))
@@ -205,7 +205,7 @@
          (case 55 then (bind ?action say) (bind $?params (create$ announce_nav_end_laundry_table_floor)))
 
          ;; SHIRT 6
-         (case 56 then (bind ?action find) (bind $?params (create$ shirt_6)))
+         (case 56 then (bind ?action find) (bind $?params (create$ object_shirt_6)))
          (case 57 then (bind ?action take) (bind $?params (create$ shirt_6)))
          (case 58 then (bind ?action say) (bind $?params (create$ announce_nav_laundry_table)))
          (case 59 then (bind ?action goto) (bind $?params (create$ laundry_table)))
