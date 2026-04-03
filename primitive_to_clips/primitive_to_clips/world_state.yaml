@@ -1,25 +1,29 @@
-# Initial world state for the GPSR planning engine.
+# world_state.yaml
 #
-# This file is loaded by WorldStateLoader at node startup and
-# converted to CLIPS facts that are injected before the CD primitives.
+# Estado inicial del mundo para el motor de planificacion GPSR.
 #
-# These facts allow CLIPS rules to reason about preconditions:
-# e.g. if the robot is in the living_room and needs to ATTEND an object
-# in the kitchen, CLIPS can infer that a PTRANS to kitchen is needed first.
+# Este archivo es leido por WorldStateLoader al inicio y
+# convertido a hechos CLIPS que se insertan antes de las
+# cd-primitives. Las reglas de CLIPS usan estos hechos
+# para verificar precondiciones y generar navegacion
+# automatica cuando el robot no esta en el lugar correcto.
 #
-# Edit this file to match the competition environment.
-# No code changes are needed — only this file.
+# Formato de hechos generados:
+#   (robot-state (room living_room) (holding nothing))
+#   (object-state (name apple) (room kitchen))
+#
+# Edita este archivo antes de cada competencia para reflejar
+# el entorno real. No se requieren cambios en el codigo.
 #
 # BioRobotics Laboratory, Facultad de Ingenieria, UNAM
 
-# ── Robot initial state ───────────────────────────────────────────────────────
+# ── Estado inicial del robot ──────────────────────────────
 robot:
   name: Justina
-  room: living_room       # where the robot starts at the beginning of the task
+  room: living_room
+  holding: nothing
 
-# ── Known objects ─────────────────────────────────────────────────────────────
-# Objects the robot already knows about before receiving the command.
-# Add or remove entries to match the competition setup.
+# ── Objetos conocidos ─────────────────────────────────────
 known_objects:
   - name: apple
     room: kitchen
@@ -29,9 +33,14 @@ known_objects:
     room: kitchen_table
   - name: tray
     room: living_room
+  - name: snack
+    room: pantry
+  - name: spoon
+    room: kitchen_table
+  - name: dish
+    room: kitchen_table
 
-# ── Known locations ───────────────────────────────────────────────────────────
-# Rooms and areas the robot can navigate to.
+# ── Ubicaciones conocidas ─────────────────────────────────
 known_locations:
   - name: kitchen
   - name: living_room
@@ -41,3 +50,7 @@ known_locations:
   - name: pantry
   - name: office
   - name: corridor
+  - name: kitchen_table
+  - name: bookshelf
+  - name: coatrack
+  - name: shelf
