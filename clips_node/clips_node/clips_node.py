@@ -16,19 +16,24 @@ from datetime import datetime
 # ======================= MAIN NODE ==========================
 # ============================================================
 
+
 class ClipsNode(Node):
 
     def __init__(self):
-        super().__init__('clips_node')
+        super().__init__("clips_node")
 
         self.get_logger().info("Inicializando CLIPS Manager Autónomo...")
 
-        self.broadcast_pub = self.create_publisher(String, 'clips/results', 10)
+        self.broadcast_pub = self.create_publisher(String, "clips/results", 10)
 
         # Servicios
-        self.create_service(Trigger, 'clips/start_planning', self.start_planning_callback)
-        self.create_service(StringSrv, 'clips/assert_fact', self.assert_fact_callback)
-        self.create_service(StringArray, 'clips/assert_facts_batch', self.assert_facts_batch_callback)
+        self.create_service(
+            Trigger, "clips/start_planning", self.start_planning_callback
+        )
+        self.create_service(StringSrv, "clips/assert_fact", self.assert_fact_callback)
+        self.create_service(
+            StringArray, "clips/assert_facts_batch", self.assert_facts_batch_callback
+        )
 
         # CLIPS
         self.env = Environment()
@@ -39,17 +44,25 @@ class ClipsNode(Node):
         self.task_queue = queue.Queue()
         self.worker = threading.Thread(target=self._worker_loop, daemon=True)
         self.worker.start()
-       
+
         self.current_plan = []
 
         self.robot_name = "Justina"
         self.plan_name = "HRI"
 
-        self.plan_file_path = Path(os.getcwd()) /'src'/'Knowledge'/'knowledge_bank' / "plan_execution.log"
+        self.plan_file_path = (
+            Path(os.getcwd())
+            / "src"
+            / "Knowledge"
+            / "knowledge_bank"
+            / "plan_execution.log"
+        )
         if not self.plan_file_path.exists():
-            self.plan_file_path = Path(os.getcwd()) / 'src'/ 'Planning' / 'clips' / "plan_execution.log"
+            self.plan_file_path = (
+                Path(os.getcwd()) / "src" / "Planning" / "clips" / "plan_execution.log"
+            )
             if not self.plan_file_path.exists():
-                self.plan_file_path = Path(os.getcwd()) / 'clips' / "plan_execution.log"
+                self.plan_file_path = Path(os.getcwd()) / "clips" / "plan_execution.log"
         self._initialize_plan_file()
 
     # ============================================================
@@ -86,18 +99,32 @@ class ClipsNode(Node):
     # ============================================================
 
     def load_rules_from_dat(self):
-        rules_list_file = Path(os.getcwd()) / 'clips' / 'clips_node' / 'clips_rules' / 'rules_list.dat'
+        rules_list_file = (
+            Path(os.getcwd())
+            / "clips"
+            / "clips_node"
+            / "clips_rules"
+            / "rules_list.dat"
+        )
 
         if not rules_list_file.exists():
-            rules_list_file = Path(os.getcwd()) / 'src' / 'Planning' / 'clips' / 'clips_node' / 'clips_rules' / 'rules_list.dat'
+            rules_list_file = (
+                Path(os.getcwd())
+                / "src"
+                / "Planning"
+                / "clips"
+                / "clips_node"
+                / "clips_rules"
+                / "rules_list.dat"
+            )
             if not rules_list_file.exists():
                 self.get_logger().error("No se encontró rules_list.dat")
                 return
 
-        with open(rules_list_file, 'r', encoding='utf-8') as f:
+        with open(rules_list_file, "r", encoding="utf-8") as f:
             for line in f:
                 clp_path = line.strip()
-                if clp_path and not clp_path.startswith('#'):
+                if clp_path and not clp_path.startswith("#"):
                     clp_file = Path(clp_path)
                     if not clp_file.is_absolute():
                         clp_file = rules_list_file.parent / clp_file
@@ -179,23 +206,23 @@ class ClipsNode(Node):
             print(fact)
             if fact.template.name == "ros-message":
                 try:
-                    step = fact['step']
-                    robot = fact['robot']
-                    action = fact['action']
-                    params = " ".join(f for f in fact['params'])
+                    step = fact["step"]
+                    robot = fact["robot"]
+                    action = fact["action"]
+                    params = " ".join(f for f in fact["params"])
                     content = f"{action} {params}"
                     # content = fact['content']
                     plan.append(f"Paso {step}: {robot} {content}")
                     facts_to_retract.append(fact)
                 except:
-                    step = fact['step']
-                    content = fact['content']
+                    step = fact["step"]
+                    content = fact["content"]
                     plan.append(f"Paso {step}: {self.robot_name} {content}")
                     facts_to_retract.append(fact)
             elif fact.template.name == "plan-note":
-                robot = fact['robot']
-                state = fact['state']
-                plan.append(f"=={robot} {state}==")     
+                robot = fact["robot"]
+                state = fact["state"]
+                plan.append(f"=={robot} {state}==")
 
         for f in facts_to_retract:
             f.retract()
@@ -215,7 +242,9 @@ class ClipsNode(Node):
     def _publish_complete_plan(self):
 
         steps_text = "\n".join(plan for plan in self.current_plan)
-        steps_text += (f"\nPaso {len(self.current_plan)}: {self.robot_name} say test_completed ")
+        steps_text += (
+            f"\nPaso {len(self.current_plan)}: {self.robot_name} say test_completed "
+        )
 
         msg = String()
         msg.data = steps_text
@@ -224,7 +253,9 @@ class ClipsNode(Node):
 
         self.get_logger().info(f"Plan generado con {len(self.current_plan)} pasos")
 
+
 # ============================================================
+
 
 def main(args=None):
     rclpy.init(args=args)
