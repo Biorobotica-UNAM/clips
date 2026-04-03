@@ -1,0 +1,43 @@
+# Initial world state for the GPSR planning engine.
+#
+# This file is loaded by WorldStateLoader at node startup and
+# converted to CLIPS facts that are injected before the CD primitives.
+#
+# These facts allow CLIPS rules to reason about preconditions:
+# e.g. if the robot is in the living_room and needs to ATTEND an object
+# in the kitchen, CLIPS can infer that a PTRANS to kitchen is needed first.
+#
+# Edit this file to match the competition environment.
+# No code changes are needed — only this file.
+#
+# BioRobotics Laboratory, Facultad de Ingenieria, UNAM
+
+# ── Robot initial state ───────────────────────────────────────────────────────
+robot:
+  name: Justina
+  room: living_room       # where the robot starts at the beginning of the task
+
+# ── Known objects ─────────────────────────────────────────────────────────────
+# Objects the robot already knows about before receiving the command.
+# Add or remove entries to match the competition setup.
+known_objects:
+  - name: apple
+    room: kitchen
+  - name: milk
+    room: pantry
+  - name: cup
+    room: kitchen_table
+  - name: tray
+    room: living_room
+
+# ── Known locations ───────────────────────────────────────────────────────────
+# Rooms and areas the robot can navigate to.
+known_locations:
+  - name: kitchen
+  - name: living_room
+  - name: bedroom
+  - name: bathroom
+  - name: entrance
+  - name: pantry
+  - name: office
+  - name: corridor
