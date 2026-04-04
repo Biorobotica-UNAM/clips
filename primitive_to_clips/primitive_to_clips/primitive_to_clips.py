@@ -50,27 +50,13 @@ class WorldStateLoader:
     Loads the initial world state from a YAML file and converts
     it to CLIPS assert_strings.
 
+    Generates facts compatible with gpsr_planning.clp templates:
+        (robot-state (room living_room) (holding nothing))
+        (object-state (name apple) (room kitchen))
+
     Responsibility: translate a human-readable world description
     into CLIPS facts that the reasoning engine can use as
     preconditions before executing the plan.
-
-    The YAML format is:
-        robot:
-          name: Justina
-          room: living_room
-
-        known_objects:
-          - name: apple
-            room: kitchen
-
-        known_locations:
-          - name: kitchen
-          - name: living_room
-
-    Usage:
-        loader = WorldStateLoader("world_state.yaml")
-        facts = loader.load()
-        # facts → list of CLIPS assert_strings
     """
 
     def __init__(self, yaml_path: Path) -> None:
@@ -79,7 +65,6 @@ class WorldStateLoader:
     def load(self) -> List[str]:
         """
         Load world state from YAML and return CLIPS assert_strings.
-
         Returns empty list if file does not exist or is invalid.
         """
         if not self._yaml_path.exists():
@@ -92,9 +77,8 @@ class WorldStateLoader:
             return []
 
         facts = []
-        facts.extend(self._build_robot_fact(data.get("robot", {})))
-        facts.extend(self._build_object_facts(data.get("known_objects", [])))
-        facts.extend(self._build_location_facts(data.get("known_locations", [])))
+        facts.extend(self._build_robot_state(data.get("robot", {})))
+        facts.extend(self._build_object_states(data.get("known_objects", [])))
         return facts
 
     def _sym(self, value: Any) -> str:
@@ -103,29 +87,27 @@ class WorldStateLoader:
             return "unknown"
         return "_".join(str(value).strip().lower().split())
 
-    def _build_robot_fact(self, robot: Dict[str, Any]) -> List[str]:
-        """Build the (Robot ...) fact from the robot section."""
+    def _build_robot_state(self, robot: Dict[str, Any]) -> List[str]:
+        """
+        Build the (robot-state ...) fact.
+        Matches the robot-state template in gpsr_planning.clp.
+        """
         if not robot:
             return []
-        name = self._sym(robot.get("name", "Justina"))
         room = self._sym(robot.get("room", "unknown"))
-        return [f"(Robot (name {name}) (room {room}))"]
+        holding = self._sym(robot.get("holding", "nothing"))
+        return [f"(robot-state (room {room}) (holding {holding}))"]
 
-    def _build_object_facts(self, objects: List[Dict]) -> List[str]:
-        """Build one (item ...) fact per known object."""
+    def _build_object_states(self, objects: List[Dict]) -> List[str]:
+        """
+        Build one (object-state ...) fact per known object.
+        Matches the object-state template in gpsr_planning.clp.
+        """
         facts = []
         for obj in objects:
             name = self._sym(obj.get("name", "unknown"))
             room = self._sym(obj.get("room", "unknown"))
-            facts.append(f"(item (name {name}) (room {room}))")
-        return facts
-
-    def _build_location_facts(self, locations: List[Dict]) -> List[str]:
-        """Build one (Room ...) fact per known location."""
-        facts = []
-        for loc in locations:
-            name = self._sym(loc.get("name", "unknown"))
-            facts.append(f"(Room (name {name}))")
+            facts.append(f"(object-state (name {name}) (room {room}))")
         return facts
 
 
