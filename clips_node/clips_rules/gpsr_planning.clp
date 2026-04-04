@@ -295,12 +295,8 @@
   =>
   (retract ?cd)
   (retract ?tc)
-  (assert (task-counter (value (+ ?tid 2))))
+  (assert (task-counter (value (+ ?tid 1))))
   (assert (sub-task (id ?tid)
-                    (type attend-at)
-                    (arg1 ?person)
-                    (arg2 unknown)))
-  (assert (sub-task (id (+ ?tid 1))
                     (type accompany-to)
                     (arg1 ?person)
                     (arg2 ?dest)))
