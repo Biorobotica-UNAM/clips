@@ -40,7 +40,7 @@ known_objects:
   - name: dish
     room: kitchen_table
   - name: user
-    room: kitchen
+    room: living_room
 
 # ── Ubicaciones conocidas ─────────────────────────────────
 known_locations:
