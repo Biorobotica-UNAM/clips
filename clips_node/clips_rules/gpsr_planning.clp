@@ -405,6 +405,42 @@
 ;; nueva sub-task con ID menor para ejecutarla antes.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; ── resolve-navigate-to-user: saber ubicacion del usuario ──────────────────
+
+(defrule resolve-navigate-to-user
+  (declare (salience 110))   ; mayor que resolve-navigate-to-needed
+  ?st <- (sub-task (id ?id) (type navigate-to)
+                   (arg1 user) (status pending))
+  (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
+  (object-state (name user) (room ?user-room))
+  ?rs <- (robot-state (room ?current))
+  (test (neq ?current ?user-room))
+  ?sc <- (step-counter (value ?step))
+  =>
+  (retract ?st)
+  (retract ?sc)
+  (retract ?rs)
+  (assert (step-counter (value (+ ?step 1))))
+  (assert (action-step (step ?step)
+                       (action goto)
+                       (arg (str-cat ?user-room))))
+  (assert (robot-state (room ?user-room) (holding nothing)))
+)
+
+;; ── navigate-to-user: robot ya esta donde esta el usuario ──
+(defrule resolve-navigate-to-user-already-there
+  (declare (salience 110))
+  ?st <- (sub-task (id ?id) (type navigate-to)
+                   (arg1 user) (status pending))
+  (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
+  (object-state (name user) (room ?user-room))
+  (robot-state (room ?current))
+  (test (eq ?current ?user-room))
+  =>
+  (retract ?st)
+  ;; Robot ya esta donde esta el usuario — omitir navegacion
+)
+
 ;; ── navigate-to: robot necesita moverse ──────────────────
 ;; Precondicion no cumplida: robot NO esta en el destino.
 ;; Accion: goto destino.
