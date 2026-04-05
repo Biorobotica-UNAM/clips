@@ -123,7 +123,7 @@ class ClipsNode(Node):
     """
 
     _ROBOT_NAME = "Justina"
-    _START_FACT = "(start (task-name action-planning))"
+    _START_FACT = "(start (name action-planning))"
     _RESULTS_TOPIC = "clips/results"
 
     def __init__(self) -> None:

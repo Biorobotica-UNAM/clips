@@ -12,9 +12,7 @@
 ;; Disparador de planificacion — insertado por clips_node.py.
 ;; Usa task-name para evitar colision con la funcion
 ;; built-in 'name' de CLIPS.
-(deftemplate start
-  (slot task-name (type SYMBOL) (default nil))
-)
+(deftemplate start (slot name))
 
 ;; Control de ejecucion paso a paso.
 (deftemplate plan-control

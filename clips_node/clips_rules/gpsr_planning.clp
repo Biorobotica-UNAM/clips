@@ -110,7 +110,7 @@
 
 ;; Marcador de inicio — insertado por clips_node.py.
 (deftemplate start
-  (slot task-name (type SYMBOL) (default nil))
+  (slot name)
 )
 
 ;; Plantillas heredadas de gpsr_templates.clp:
@@ -128,7 +128,7 @@
 
 (defrule gpsr-initialize
   (declare (salience 500))
-  ?s <- (start (task-name action-planning))
+  ?s <- (start (name action-planning))
   (cd-primitive)
   =>
   (retract ?s)
