@@ -1,5 +1,0 @@
-Paso 0: Justina say start_robot_inspection
-Paso 1: Justina say announce_nav_exit
-Paso 1: Justina goto exit
-Paso 1: Justina say announce_nav_end_exit
-Paso 4: Justina say test_completed 

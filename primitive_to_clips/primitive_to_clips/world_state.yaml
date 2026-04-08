@@ -1,0 +1,58 @@
+# world_state.yaml
+#
+# Estado inicial del mundo para el motor de planificacion GPSR.
+#
+# Este archivo es leido por WorldStateLoader al inicio y
+# convertido a hechos CLIPS que se insertan antes de las
+# cd-primitives. Las reglas de CLIPS usan estos hechos
+# para verificar precondiciones y generar navegacion
+# automatica cuando el robot no esta en el lugar correcto.
+#
+# Formato de hechos generados:
+#   (robot-state (room living_room) (holding nothing))
+#   (object-state (name apple) (room kitchen))
+#
+# Edita este archivo antes de cada competencia para reflejar
+# el entorno real. No se requieren cambios en el codigo.
+#
+# BioRobotics Laboratory, Facultad de Ingenieria, UNAM
+
+# ── Estado inicial del robot ──────────────────────────────
+robot:
+  name: Justina
+  room: living_room
+  holding: nothing
+
+# ── Objetos conocidos ─────────────────────────────────────
+known_objects:
+  - name: apple
+    room: kitchen
+  - name: milk
+    room: pantry
+  - name: cup
+    room: kitchen_table
+  - name: tray
+    room: living_room
+  - name: snack
+    room: pantry
+  - name: spoon
+    room: kitchen_table
+  - name: dish
+    room: kitchen_table
+  - name: user
+    room: living_room
+
+# ── Ubicaciones conocidas ─────────────────────────────────
+known_locations:
+  - name: kitchen
+  - name: living_room
+  - name: bedroom
+  - name: bathroom
+  - name: entrance
+  - name: pantry
+  - name: office
+  - name: corridor
+  - name: kitchen_table
+  - name: bookshelf
+  - name: coatrack
+  - name: shelf
