@@ -309,15 +309,47 @@
 ;; Expansion:
 ;;   communicate  contenido
 
-(defrule expand-mtrans
+(defrule expand-mtrans-objective-location
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive MTRANS) (content ?content))
+  ?cd <- (cd-primitive (primitive MTRANS)
+                       (content ?content&~unknown)
+                       (to ?to&~unknown)
+                       (location ?loc&~unknown))
   ?tc <- (task-counter (value ?tid))
   =>
   (retract ?cd)
   (retract ?tc)
-  (assert (task-counter (value (+ ?tid 1))))
+  (assert (task-counter (value (+ ?tid 3))))
   (assert (sub-task (id ?tid)
+                    (type navigate-to)
+                    (arg1 ?loc)))
+  (assert (sub-task (id (+ ?tid 1))
+                    (type attend-at)
+                    (arg1 ?to)
+                    (arg2 unknown)))
+  (assert (sub-task (id (+ ?tid 2))
+                    (type communicate)
+                    (arg1 ?content)))
+)
+
+
+(defrule expand-mtrans-objective
+  (declare (salience 200))
+  ?cd <- (cd-primitive (primitive MTRANS)
+                       (content ?content&~unknown)
+                       (to ?to&~unknown)
+                       (location unknown))
+  (object-state (name ?to) (room ?to-room))
+  ?tc <- (task-counter (value ?tid))
+  =>
+  (retract ?cd)
+  (retract ?tc)
+  (assert (task-counter (value (+ ?tid 2))))
+  (assert (sub-task (id ?tid)
+                    (type attend-at)
+                    (arg1 ?to)
+                    (arg2 ?to-room)))
+  (assert (sub-task (id (+ ?tid 1))
                     (type communicate)
                     (arg1 ?content)))
 )

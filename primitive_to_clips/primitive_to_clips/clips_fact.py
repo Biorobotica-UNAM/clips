@@ -104,6 +104,29 @@ class ClipsFact(ABC):
             return "unknown"
         return "_".join(str(value).strip().lower().split())
 
+    def _entity(self, value: Any) -> str:
+        """
+        Normalize entities for physical/world references.
+
+        Removes determiners like 'a', 'an', 'the' AFTER symbol normalization.
+
+        Examples:
+            "the kitchen" → "kitchen"
+            "an apple"    → "apple"
+            "the red box" → "red_box"
+        """
+        sym = self._sym(value)
+
+        if sym == "unknown":
+            return sym
+
+        tokens = sym.split("_")
+
+        if tokens[0] in {"a", "an", "the"}:
+            tokens = tokens[1:]
+
+        return "_".join(tokens) if tokens else "unknown"
+
     def _base_slots(self, primitive: Dict[str, Any]) -> Dict[str, str]:
         """
         Extract the common slots shared by all primitive types.

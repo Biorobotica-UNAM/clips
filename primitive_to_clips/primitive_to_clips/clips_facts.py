@@ -28,7 +28,7 @@ class PtransFact(ClipsFact):
 
     def _extract_slots(self, primitive: Dict[str, Any]) -> Dict[str, str]:
         slots = self._base_slots(primitive)
-        slots["to"] = self._sym(primitive.get("to", "unknown"))
+        slots["to"] = self._entity(primitive.get("to", "unknown"))
         return slots
 
 
@@ -40,9 +40,9 @@ class AtransFact(ClipsFact):
 
     def _extract_slots(self, primitive: Dict[str, Any]) -> Dict[str, str]:
         slots = self._base_slots(primitive)
-        slots["object"] = self._sym(primitive.get("object", "unknown"))
-        slots["from"] = self._sym(primitive.get("from", "unknown"))
-        slots["to"] = self._sym(primitive.get("to", "unknown"))
+        slots["object"] = self._entity(primitive.get("object", "unknown"))
+        slots["from"] = self._entity(primitive.get("from", "unknown"))
+        slots["to"] = self._entity(primitive.get("to", "unknown"))
         return slots
 
 
@@ -71,7 +71,7 @@ class GraspFact(ClipsFact):
 
     def _extract_slots(self, primitive: Dict[str, Any]) -> Dict[str, str]:
         slots = self._base_slots(primitive)
-        slots["object"] = self._sym(primitive.get("object", "unknown"))
+        slots["object"] = self._entity(primitive.get("object", "unknown"))
         return slots
 
 
@@ -87,7 +87,7 @@ class AttendFact(ClipsFact):
     def _extract_slots(self, primitive: Dict[str, Any]) -> Dict[str, str]:
         slots = self._base_slots(primitive)
         slots["object"] = self._sym(primitive.get("object", "unknown"))
-        slots["location"] = self._sym(primitive.get("location", "unknown"))
+        slots["location"] = self._entity(primitive.get("location", "unknown"))
         return slots
 
 
@@ -105,6 +105,7 @@ class MtransFact(ClipsFact):
         slots = self._base_slots(primitive)
         slots["content"] = self._sym(primitive.get("content", "unknown"))
         slots["to"] = self._sym(primitive.get("to", "user"))
+        slots["location"] = self._entity(primitive.get("location", "unknown"))
         return slots
 
 
@@ -149,7 +150,7 @@ class SocialFact(ClipsFact):
         slots = self._base_slots(primitive)
         # 'target' is the field name used by the semantic parser for SOCIAL
         slots["object"] = self._sym(primitive.get("target", "unknown"))
-        slots["location"] = self._sym(primitive.get("location", "unknown"))
+        slots["location"] = self._entity(primitive.get("location", "unknown"))
         return slots
 
 

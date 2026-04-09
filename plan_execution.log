@@ -1,0 +1,8 @@
+==Justina GPSR_START==
+Paso 1: Justina goto unknown
+==Justina GPSR_DONE==
+Paso 4: Justina say test_completed
+==Justina GPSR_START==
+Paso 1: Justina say the_name_of_the_person_in_the_office
+==Justina GPSR_DONE==
+Paso 4: Justina say test_completed
