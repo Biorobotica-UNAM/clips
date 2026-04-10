@@ -43,9 +43,9 @@
    (assert (stack (states
       START_PNP
       NAVIGATE_TO_KITCHEN
-      CLEAN_CUTLERY
       CLEAN_TABLEWARE
       CLEAN_TRASH
+      CLEAN_CUTLERY
       ORGANIZE_CATEGORY_1
       ORGANIZE_CATEGORY_2
       SERVE_BREAKFAST
@@ -87,42 +87,25 @@
       )
    )
 
-   (if (eq ?name CLEAN_CUTLERY) then
-      (switch ?p
-         (case 1 then (bind ?action say) (bind $?params (create$ clean_cutlery)))
-         (case 2 then (bind ?action align) (bind $?params (create$ table)))
-         (case 3 then (bind ?action find) (bind $?params (create$ object_cutlery)))
-         (case 4 then (bind ?action save) (bind $?params (create$ cutlery)))
-         (case 5 then (bind ?action say) (bind $?params (create$ identify_object_cutlery)))
-         (case 6 then (bind ?action take) (bind $?params (create$ cutlery)))
-         (case 7 then (bind ?action say) (bind $?params (create$ move_cutlery_dishwasher)))
-         (case 8 then (bind ?action goto) (bind $?params (create$ dishwasher)))
-         (case 9 then (bind ?action say) (bind $?params (create$ ask_open_dishwasher_door)))
-         (case 10 then (bind ?action check) (bind $?params (create$ dishwasher_door)))
-         (case 11 then (bind ?action align) (bind $?params (create$ dishwasher)))
-         (case 12 then (bind ?action drop) (bind $?params (create$ dishwasher)))
-         (default (bind ?next-phase done))
-      )
-   )
-
-
-
    (if (eq ?name CLEAN_TABLEWARE) then
       (switch ?p
+
+      ;TODO: Revisar que coincidan mismas llamadas con Takeshi, hacer revisar logica con Takeshi (esa está bien)
          (case 1 then (bind ?action say) (bind $?params (create$ clean_tableware)))
-         (case 2 then (bind ?action goto) (bind $?params (create$ kitchen_table)))
-         (case 3 then (bind ?action align) (bind $?params (create$ table)))
-         (case 4 then (bind ?action find) (bind $?params (create$ object_tableware_1)))
+         (case 2 then (bind ?action align) (bind $?params (create$ table)))
+         (case 3 then (bind ?action find) (bind $?params (create$ object_tableware_1)))
          (case 5 then (bind ?action say) (bind $?params (create$ identify_object_tableware_1)))
-         (case 6 then (bind ?action take) (bind $?params (create$ tableware_1)))
+         (case 6 then (bind ?action take) (bind $?params (create$ left_tableware_1)))
          (case 7 then (bind ?action say) (bind $?params (create$ take_tableware_2)))
          (case 8 then (bind ?action find) (bind $?params (create$ object_tableware_2)))
          (case 9 then (bind ?action say) (bind $?params (create$ identify_object_tableware_2)))
-         (case 10 then (bind ?action take) (bind $?params (create$ tableware_2)))
+         (case 10 then (bind ?action take) (bind $?params (create$ right_tableware_2)))
          (case 11 then (bind ?action say) (bind $?params (create$ move_tableware_dishwasher)))
          (case 12 then (bind ?action goto) (bind $?params (create$ dishwasher)))
-         (case 13 then (bind ?action align) (bind $?params (create$ dishwasher)))
-         (case 14 then (bind ?action drop) (bind $?params (create$ dishwasher)))
+         (case 13 then (bind ?action say) (bind $?params (create$ ask_open_dishwasher_door)))
+         (case 14 then (bind ?action align) (bind $?params (create$ dishwasher)))
+         (case 15 then (bind ?action drop) (bind $?params (create$ left_dishwasher)))
+         (case 16 then (bind ?action drop) (bind $?params (create$ right_dishwasher)))
          (default (bind ?next-phase done))
       )
    )
@@ -135,11 +118,28 @@
          (case 3 then (bind ?action align) (bind $?params (create$ table)))
          (case 4 then (bind ?action find) (bind $?params (create$ object_trash)))
          (case 5 then (bind ?action say) (bind $?params (create$ identify_object_trash)))
-         (case 6 then (bind ?action take) (bind $?params (create$ trash)))
+         (case 6 then (bind ?action take) (bind $?params (create$ left_trash)))
          (case 7 then (bind ?action say) (bind $?params (create$ move_trash_trash_bin)))
          (case 8 then (bind ?action goto) (bind $?params (create$ trash_bin)))
          (case 9 then (bind ?action align) (bind $?params (create$ trash_bin)))
-         (case 10 then (bind ?action drop) (bind $?params (create$ trash_bin)))
+         (case 10 then (bind ?action drop) (bind $?params (create$ left_trash)))
+         (default (bind ?next-phase done))
+      )
+   )
+
+   (if (eq ?name CLEAN_CUTLERY) then
+      (switch ?p
+         (case 1 then (bind ?action say) (bind $?params (create$ clean_cutlery)))
+         (case 2 then (bind ?action goto) (bind $?params (create$ kitchen_table)))
+         (case 3 then (bind ?action align) (bind $?params (create$ table)))
+         (case 4 then (bind ?action find) (bind $?params (create$ object_cutlery)))
+         (case 5 then (bind ?action save) (bind $?params (create$ cutlery)))
+         (case 6 then (bind ?action say) (bind $?params (create$ identify_object_cutlery)))
+         (case 7 then (bind ?action take) (bind $?params (create$ left_cutlery)))
+         (case 8 then (bind ?action say) (bind $?params (create$ move_cutlery_dishwasher)))
+         (case 9 then (bind ?action goto) (bind $?params (create$ dishwasher)))
+         (case 10 then (bind ?action align) (bind $?params (create$ dishwasher)))
+         (case 11 then (bind ?action drop) (bind $?params (create$ left_dishwasher)))
          (default (bind ?next-phase done))
       )
    )
