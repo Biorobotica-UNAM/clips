@@ -57,6 +57,7 @@ class AccompanyFact(ClipsFact):
         slots["object"] = self._sym(primitive.get("object", "unknown"))
         slots["from"] = self._sym(primitive.get("from", "unknown"))
         slots["to"] = self._sym(primitive.get("to", "unknown"))
+        slots["location"] = self._entity(primitive.get("location", "unknown"))
         return slots
 
 

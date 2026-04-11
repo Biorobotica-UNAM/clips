@@ -286,17 +286,25 @@
 ;;   attend-at    persona  unknown
 ;;   accompany-to persona  destino
 
-(defrule expand-accompany
+(defrule expand-accompany-location
   (declare (salience 200))
   ?cd <- (cd-primitive (primitive ACCOMPANY)
                        (object ?person)
-                       (to ?dest))
+                       (to ?dest)
+                       (location ?location&~unknown))
   ?tc <- (task-counter (value ?tid))
   =>
   (retract ?cd)
   (retract ?tc)
-  (assert (task-counter (value (+ ?tid 1))))
+  (assert (task-counter (value (+ ?tid 3))))
   (assert (sub-task (id ?tid)
+                    (type navigate-to)
+                    (arg1 ?location)))
+  (assert (sub-task (id ?tid)
+                    (type attend-at)
+                    (arg1 ?person)
+                    (arg2 unknown)))
+  (assert (sub-task (id (+ ?tid 1))
                     (type accompany-to)
                     (arg1 ?person)
                     (arg2 ?dest)))
@@ -677,13 +685,10 @@
   (retract ?st)
   (retract ?sc)
   (retract ?rs)
-  (assert (step-counter (value (+ ?step 2))))
+  (assert (step-counter (value (+ ?step 1))))
   (assert (action-step (step ?step)
                        (action follow)
                        (arg (str-cat ?person))))
-  (assert (action-step (step (+ ?step 1))
-                       (action goto)
-                       (arg (str-cat ?dest))))
   (assert (robot-state (room ?dest) (holding ?held)))
 )
 
