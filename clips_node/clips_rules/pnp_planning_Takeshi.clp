@@ -89,7 +89,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    (if (eq ?name NAVIGATE_TO_KITCHEN) then
-      (switch ?p do
+      (switch ?p 
          (case 1 then (bind ?action say)  (bind $?params (create$ ask_open_door)))
          (case 2 then (bind ?action check)(bind $?params (create$ door)))
          (case 3 then (bind ?action say)  (bind $?params (create$ announce_nav_kitchen_table)))
@@ -105,7 +105,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    (if (eq ?name CLEAN_CUTLERY) then
-      (switch ?p do
+      (switch ?p 
          (case 1  then (bind ?action say) (bind $?params (create$ clean_cutlery)))
          (case 2  then (bind ?action align) (bind $?params (create$ table)))
          (case 3  then (bind ?action find) (bind $?params (create$ object_cutlery)))
@@ -127,7 +127,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    (if (eq ?name CLEAN_TABLEWARE) then
-      (switch ?p do
+      (switch ?p 
          (case 1 then (bind ?action say) (bind $?params (create$ clean_tableware)))
          (case 2 then (bind ?action goto) (bind $?params (create$ kitchen_table)))
          (case 3 then (bind ?action align) (bind $?params (create$ table)))
@@ -159,7 +159,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    (if (eq ?name CLEAN_TRASH) then
-      (switch ?p do
+      (switch ?p 
          (case 1  then (bind ?action say)  (bind $?params (create$ clean_trash)))
          (case 2  then (bind ?action goto) (bind $?params (create$ kitchen_table)))
          (case 3  then (bind ?action align)(bind $?params (create$ table)))
@@ -180,7 +180,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    (if (eq ?name ORGANIZE_CATEGORY_1) then
-      (switch ?p do
+      (switch ?p 
          (case 1  then (bind ?action say)  (bind $?params (create$ organize_groseries)))
          (case 2  then (bind ?action goto) (bind $?params (create$ kitchen_table)))
          (case 3  then (bind ?action align)(bind $?params (create$ table)))
@@ -203,7 +203,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    (if (eq ?name ORGANIZE_CATEGORY_2) then
-      (switch ?p do
+      (switch ?p 
          (case 1  then  (bind ?action say)  (bind $?params (create$ organize_others)))
          (case 2  then  (bind ?action goto) (bind $?params (create$ kitchen_table)))
          (case 3  then  (bind ?action align)(bind $?params (create$ table)))
@@ -226,7 +226,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    (if (eq ?name SERVE_BREAKFAST) then
-      (switch ?p do
+      (switch ?p 
          (case 1  then (bind ?action align)(bind $?params (create$ cabinet)))
          (case 2  then (bind ?action find) (bind $?params (create$ object_milk)))
          (case 3  then (bind ?action save) (bind $?params (create$ milk)))
