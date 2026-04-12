@@ -56,3 +56,5 @@ known_locations:
   - name: bookshelf
   - name: coatrack
   - name: shelf
+  - name: cabinet
+  - name: chairs
