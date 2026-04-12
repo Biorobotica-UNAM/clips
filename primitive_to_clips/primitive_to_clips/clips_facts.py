@@ -56,7 +56,7 @@ class AccompanyFact(ClipsFact):
         slots = self._base_slots(primitive)
         slots["object"] = self._sym(primitive.get("object", "unknown"))
         slots["from"] = self._sym(primitive.get("from", "unknown"))
-        slots["to"] = self._sym(primitive.get("to", "unknown"))
+        slots["to"] = self._entity(primitive.get("to", "unknown"))
         slots["location"] = self._entity(primitive.get("location", "unknown"))
         return slots
 
@@ -105,7 +105,7 @@ class MtransFact(ClipsFact):
     def _extract_slots(self, primitive: Dict[str, Any]) -> Dict[str, str]:
         slots = self._base_slots(primitive)
         slots["content"] = self._sym(primitive.get("content", "unknown"))
-        slots["to"] = self._sym(primitive.get("to", "user"))
+        slots["to"] = self._entity(primitive.get("to", "user"))
         slots["location"] = self._entity(primitive.get("location", "unknown"))
         return slots
 
