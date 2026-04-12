@@ -41,6 +41,10 @@ known_objects:
     room: kitchen_table
   - name: user
     room: living_room
+  - name: iced_tea
+    room: kitchen
+  - name: sugar
+    room: desk
 
 # ── Ubicaciones conocidas ─────────────────────────────────
 known_locations:
@@ -58,3 +62,4 @@ known_locations:
   - name: shelf
   - name: cabinet
   - name: chairs
+  - name: desk
