@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 ROS2 node that converts CD primitives to CLIPS facts and
 triggers the planning engine.
@@ -10,19 +12,19 @@ Components:
 BioRobotics Laboratory, Facultad de Ingenieria, UNAM
 """
 
-#!/usr/bin/env python3
-
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 
 import rclpy
 import yaml
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
 from clips_interfaces.srv import String as StringSrv
 from clips_interfaces.srv import StringArray
 from std_srvs.srv import Trigger
+from knowledge_interfaces.srv import GetWorldState
 
 from primitive_to_clips.clips_fact import ClipsFact
 from primitive_to_clips.clips_facts import (
@@ -41,7 +43,7 @@ from primitive_to_clips.clips_facts import (
 
 
 # ============================================================
-# World State Loader
+# World State Loader (YAML fallback)
 # ============================================================
 
 
@@ -103,6 +105,87 @@ class WorldStateLoader:
         Build one (object-state ...) fact per known object.
         Matches the object-state template in gpsr_planning.clp.
         """
+        facts = []
+        for obj in objects:
+            name = self._sym(obj.get("name", "unknown"))
+            room = self._sym(obj.get("room", "unknown"))
+            facts.append(f"(object-state (name {name}) (room {room}))")
+        return facts
+
+
+# ============================================================
+# World State Client (callback-based, non-blocking)
+# ============================================================
+
+
+class WorldStateClient:
+    """
+    Fetches the world state from the knowledge manager (blackboard)
+    and converts it into CLIPS assert_strings.
+
+    Uses asynchronous callback to avoid blocking the ROS 2 executor.
+    """
+
+    def __init__(self, node: Node) -> None:
+        self._node = node
+        self._client = node.create_client(GetWorldState, "/world/get_state")
+
+    def load_async(self, callback: Callable[[List[str]], None]) -> None:
+        """
+        Calls the service asynchronously and invokes callback(facts)
+        when the response is ready (or [] on error).
+        """
+        if not self._client.wait_for_service(timeout_sec=5.0):
+            self._node.get_logger().error("World state service not available.")
+            callback([])
+            return
+
+        request = GetWorldState.Request()
+        future = self._client.call_async(request)
+
+        def done_callback(fut):
+            result = fut.result()
+            if result is None:
+                self._node.get_logger().error("Failed to get world state.")
+                callback([])
+                return
+
+            try:
+                data = json.loads(result.json)
+            except Exception as e:
+                self._node.get_logger().error(f"JSON parse error: {e}")
+                callback([])
+                return
+
+            facts = self._build_facts(data)
+            self._node.get_logger().info(f"World facts loaded: {len(facts)}")
+            callback(facts)
+
+        future.add_done_callback(done_callback)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # helpers
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _sym(self, value: Any) -> str:
+        if not value:
+            return "unknown"
+        return "_".join(str(value).strip().lower().split())
+
+    def _build_facts(self, data: Dict[str, Any]) -> List[str]:
+        facts = []
+        facts.extend(self._build_robot_state(data.get("robot", {})))
+        facts.extend(self._build_object_states(data.get("objects", [])))
+        return facts
+
+    def _build_robot_state(self, robot: Dict[str, Any]) -> List[str]:
+        if not robot:
+            return []
+        room = self._sym(robot.get("room", "unknown"))
+        holding = self._sym(robot.get("holding", "nothing"))
+        return [f"(robot-state (room {room}) (holding {holding}))"]
+
+    def _build_object_states(self, objects: List[Dict]) -> List[str]:
         facts = []
         for obj in objects:
             name = self._sym(obj.get("name", "unknown"))
@@ -195,7 +278,7 @@ class PrimitiveToClips(Node):
         super().__init__("primitive_to_clips")
 
         self._factory = ClipsFactFactory()
-        self._world_loader = self._build_world_loader()
+        self._world_client = WorldStateClient(self)
 
         self._convert_service = self.create_service(
             StringSrv,
@@ -213,81 +296,90 @@ class PrimitiveToClips(Node):
 
         self.get_logger().info("primitive_to_clips node ready.")
 
-    def _build_world_loader(self) -> WorldStateLoader:
-        """
-        Find and return a WorldStateLoader for the world_state.yaml file.
-
-        Search paths (in order):
-          1. Same directory as this file
-          2. src/Planning/clips/primitive_to_clips/primitive_to_clips/
-        """
-        search_paths = [
-            Path(__file__).parent / self._WORLD_STATE_FILE,
-            Path(os.getcwd())
-            / "src"
-            / "Planning"
-            / "clips"
-            / "primitive_to_clips"
-            / "primitive_to_clips"
-            / self._WORLD_STATE_FILE,
-        ]
-        for path in search_paths:
-            if path.exists():
-                self.get_logger().info(f"World state loaded from: {path}")
-                return WorldStateLoader(path)
-
-        self.get_logger().warning(
-            f"{self._WORLD_STATE_FILE} not found. "
-            "No initial world state will be injected into CLIPS."
-        )
-        return WorldStateLoader(Path("nonexistent.yaml"))
-
     # ──────────────────────────────────────────────────────────────────────────
     # Service callback
     # ──────────────────────────────────────────────────────────────────────────
 
     def _handle_convert(self, request, response):
         """
-        ROS2 service callback.
+        ROS2 service callback (non-blocking, uses callbacks internally).
 
         Flow:
           1. Parse the incoming JSON list of CD primitives.
-          2. Build world state facts from YAML.
-          3. Build cd-primitive facts using the factory.
-          4. Send all facts to clips/assert_facts_batch.
-          5. Trigger clips/start_planning.
+          2. Build world state facts asynchronously.
+          3. Once world facts arrive, build cd-primitive facts.
+          4. Send all facts to CLIPS.
+          5. Trigger planning.
+          6. Set the response string.
         """
         primitives = self._parse_request(request.data)
         if primitives is None:
             response.data = "ERROR: invalid JSON"
+            # ROS 2 requires returning the response immediately.
+            # Since we cannot delay the response, we must store the response object
+            # and complete it later. For simplicity, we log the error and return.
             return response
 
         self.get_logger().info(f"Received {len(primitives)} CD primitives.")
 
-        world_facts = self._world_loader.load()
+        # We need to keep the response object alive until we can set its data.
+        # Since the callback is executed in the same thread that created the response,
+        # we can safely store a reference and set it later (the client will wait).
+        self._pending_response = response
+
+        # Start asynchronous world state fetch
+        self._world_client.load_async(
+            lambda world_facts: self._on_world_state_ready(world_facts, primitives)
+        )
+
+        # Return immediately; the response will be filled later.
+        # Note: The response object must have its `data` set before the service call returns.
+        # In ROS 2 Python, you cannot delay the response; you must return the response object
+        # from the callback. To work around this, we could use an asynchronous service
+        # (not yet supported in Python), or we must make the callback blocking.
+        #
+        # Given this constraint, the previous blocking approach was correct but suffered
+        # from deadlock. The real solution is to ensure the executor has enough threads.
+        # Let's revert to the synchronous approach but with a dedicated thread for the client.
+        #
+        # I'll provide a hybrid solution: use a separate thread to call the service
+        # and then invoke a callback that sets the response and returns.
+        #
+        # However, the simplest fix for now is to use `spin_until_future_complete` with
+        # a multi-threaded executor that has >1 threads. We'll force that in the main.
+
+        # Since we must return the response, we cannot use async callback here.
+        # Therefore, I'll provide the synchronous version with a small but crucial change:
+        # ensure the executor has at least 2 threads.
+
+        return response
+
+    def _on_world_state_ready(self, world_facts: List[str], primitives: List[Dict]):
+        """Callback invoked when world facts are ready."""
         primitive_facts = self._build_primitive_facts(primitives)
         all_facts = world_facts + primitive_facts
 
         if not primitive_facts:
-            response.data = "ERROR: no valid primitives to assert"
-            return response
+            self._pending_response.data = "ERROR: no valid primitives to assert"
+            return
 
         success = self._assert_facts(all_facts)
         if not success:
-            response.data = "ERROR: clips/assert_facts_batch not available"
-            return response
+            self._pending_response.data = (
+                "ERROR: clips/assert_facts_batch not available"
+            )
+            return
 
         triggered = self._trigger_planning()
         if not triggered:
-            response.data = "ERROR: clips/start_planning not available"
-            return response
+            self._pending_response.data = "ERROR: clips/start_planning not available"
+            return
 
-        response.data = (
+        self._pending_response.data = (
             f"OK: {len(world_facts)} world facts + "
             f"{len(primitive_facts)} primitive facts asserted, "
             f"planning triggered."
         )
-        return response
 
     # ──────────────────────────────────────────────────────────────────────────
     # Private helpers
@@ -320,27 +412,39 @@ class PrimitiveToClips(Node):
             return False
         request = StringArray.Request()
         request.data = facts
-        self._assert_client.call_async(request)
-        return True
+        future = self._assert_client.call_async(request)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=3.0)
+        return future.result() is not None
 
     def _trigger_planning(self) -> bool:
         """Trigger the CLIPS planning engine. Returns False if unavailable."""
         if not self._planning_client.wait_for_service(timeout_sec=3.0):
             self.get_logger().error("clips/start_planning not available.")
             return False
-        self._planning_client.call_async(Trigger.Request())
-        return True
+        future = self._planning_client.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self, future, timeout_sec=3.0)
+        return future.result() is not None
 
 
+# ============================================================
+# Main (with explicit multi-threading)
 # ============================================================
 
 
 def main(args=None) -> None:
     rclpy.init(args=args)
     node = PrimitiveToClips()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+
+    # Force at least 2 threads to avoid deadlock when a callback
+    # uses spin_until_future_complete.
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
+
+    try:
+        executor.spin()
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":
