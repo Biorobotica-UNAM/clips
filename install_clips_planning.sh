@@ -16,7 +16,7 @@ pip3 install clipspy --break-system-packages
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MODEL_DIR="$SCRIPT_DIR/nl2cd_qwen7b"
 ZIP_FILE="$SCRIPT_DIR/nl2cd_qwen7b.zip"
-MEGA_LINK="https://mega.nz/file/mgZj2RhB#jlItPKV1tcmUsrGVGe7jV_BaodccdSnh8aTnRxLbjMA"   # <--- REEMPLAZAR CON EL ENLACE REAL
+MEGA_LINK="https://mega.nz/file/ToR0nTLS#zAs18m_1Ti3wfFY64M3FC5JfKlC19yV2yCkGUfg5qbU"   # <--- REEMPLAZAR CON EL ENLACE REAL
 
 if [ ! -d "$MODEL_DIR" ]; then
     echo "Descargando modelo nl2cd_qwen7b desde Mega..."
