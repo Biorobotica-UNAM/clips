@@ -40,7 +40,7 @@ known_objects:
   - name: dish
     room: kitchen_table
   - name: user
-    room: living_room
+    room: instruction_point
   - name: iced_tea
     room: kitchen
   - name: sugar
