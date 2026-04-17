@@ -1,24 +1,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  gpsr_planning.clp
+;;  gpsr_planning.clp  (briefing edition)
 ;;
-;;  Plan dinamico para GPSR basado en primitivas CD.
+;;  Arquitectura de numeración dual:
+;;    say-counter  (1, 2, 3 ...)     → says de briefing al inicio
+;;    act-counter  (1001, 1002 ...)  → acciones ejecutables
 ;;
-;;  Arquitectura de tres capas:
-;;    Capa 1 (salience 200-190) — Expansion de primitivas CD
-;;    Capa 2 (salience 110-90)  — Resolucion de precondiciones
-;;    Capa 3 (salience  10)     — Serializacion a ros-message
+;;  El serializer ordena por step, por lo que el plan siempre
+;;  tiene la forma:
+;;    1..N   → briefing completo ("I am going to X", "I will pick Y"...)
+;;    1001.. → acciones reales   (goto, find, align, take, give...)
 ;;
-;;  Flujo:
-;;    cd-primitive → sub-task → action-step → ros-message
-;;
-;;  Orden determinista de sub-tasks:
-;;    ID = (step_de_la_primitiva * 100) + offset_local
-;;    Cada primitiva tiene un bloque de 100 IDs garantizado.
-;;    El campo step lo asigna primitive_to_clips.py con
-;;    enumerate(primitives, start=1), respetando el orden
-;;    del parser. Asi la primitiva N siempre ejecuta antes
-;;    que la N+1, sin importar el orden de la agenda CLIPS.
+;;  Para quitar el briefing: eliminar todos los action-step
+;;  que usen ?say-step y borrar los assert de say-counter.
 ;;
 ;;  BioRobotics Laboratory, Facultad de Ingenieria, UNAM
 ;;
@@ -27,11 +21,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 1 — TEMPLATES LOCALES
-;;
-;; Los templates compartidos viven en gpsr_templates.clp:
-;;   start, plan-control, ros-message, plan-note,
-;;   search-result, pending-accompany
-;; No se redefinen aqui.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftemplate cd-primitive
@@ -70,9 +59,14 @@
   (slot arg    (type STRING)  (default ""))
 )
 
-;; Unico contador global — no existe task-counter.
-(deftemplate step-counter
+;; Contador para says de briefing (1, 2, 3...)
+(deftemplate say-counter
   (slot value (type INTEGER) (default 1))
+)
+
+;; Contador para acciones reales (1001, 1002...)
+(deftemplate act-counter
+  (slot value (type INTEGER) (default 1001))
 )
 
 
@@ -86,7 +80,8 @@
   (cd-primitive)
   =>
   (retract ?s)
-  (assert (step-counter (value 1)))
+  (assert (say-counter (value 1)))
+  (assert (act-counter (value 1001)))
   (assert (plan-note (robot Justina) (state GPSR_START)))
 )
 
@@ -94,9 +89,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 3 — CAPA 1: EXPANSION DE PRIMITIVAS CD
 ;;
-;; ID de sub-task = step * 100 + offset
-;; No hay task-counter. Orden garantizado por ?step.
-;; salience 200 casos especificos, 190 fallbacks.
+;; Sin cambios — ID = step * 100 + offset garantiza orden.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrule expand-atrans
@@ -109,10 +102,10 @@
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base)          (type navigate-to) (arg1 ?from)))
-  (assert (sub-task (id (+ ?base 1))   (type acquire)     (arg1 ?obj) (arg2 ?from)))
-  (assert (sub-task (id (+ ?base 2))   (type navigate-to) (arg1 ?to)))
-  (assert (sub-task (id (+ ?base 3))   (type deliver)     (arg1 ?obj) (arg2 ?to)))
+  (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?from)))
+  (assert (sub-task (id (+ ?base 1)) (type acquire)     (arg1 ?obj) (arg2 ?from)))
+  (assert (sub-task (id (+ ?base 2)) (type navigate-to) (arg1 ?to)))
+  (assert (sub-task (id (+ ?base 3)) (type deliver)     (arg1 ?obj) (arg2 ?to)))
 )
 
 (defrule expand-ptrans
@@ -306,7 +299,6 @@
   (assert (sub-task (id (+ ?base 1)) (type interact)    (arg1 ?person)))
 )
 
-;; No se genera attend-at: resolve-interact ya emite find.
 (defrule expand-social-unknown-location
   (declare (salience 190))
   ?cd <- (cd-primitive (primitive SOCIAL)
@@ -335,9 +327,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 4 — CAPA 2: RESOLUCION DE PRECONDICIONES
 ;;
-;; salience 110 casos especiales, 105 restores,
-;; 100 casos normales, 90 fallbacks.
+;; Cada resolve-* usa DOS contadores:
+;;   ?say-step  ← de say-counter  → briefing al inicio del plan
+;;   ?act-step  ← de act-counter  → acción real más adelante
+;;
+;; Patrón por tipo:
+;;
+;;  navigate  : say("navigating to X")        | goto X
+;;  acquire   : say("looking for X")          | find | align | take
+;;  acquire?  : say("unknown loc, follow me") | find user | follow | listen | save | find | align | take
+;;  deliver   : say("delivering X to Y")      | give X Y
+;;  attend    : say("searching for X")        | find X
+;;  accompany : say("escorting X to Y")       | find X | follow X Y
+;;  interact  : say("greeting X")             | find X | focus X | say greet
+;;  wait      : say("waiting for X")          | listen X
+;;  communicate: say briefing                 | say content
+;;
+;; salience: 110 especiales, 105 restore, 100 normal, 90 fallback
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ── navigate-to ──────────────────────────────────────────
 
 (defrule resolve-navigate-to-user-needed
   (declare (salience 110))
@@ -346,11 +355,15 @@
   (object-state (name user) (room ?user-room))
   ?rs <- (robot-state (room ?current))
   (test (neq ?current ?user-room))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc) (retract ?rs)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action goto) (arg (str-cat ?user-room))))
+  (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I am going to " ?user-room " to find the user"))))
+  (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?user-room))))
+  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?user-room))))
   (assert (robot-state (room ?user-room) (holding nothing)))
 )
 
@@ -371,11 +384,15 @@
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   ?rs <- (robot-state (room ?current) (holding ?held))
   (test (neq ?current ?dest))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc) (retract ?rs)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action goto) (arg (str-cat ?dest))))
+  (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I am navigating to " ?dest))))
+  (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?dest))))
+  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?dest))))
   (assert (robot-state (room ?dest) (holding ?held)))
 )
 
@@ -383,11 +400,17 @@
   (declare (salience 100))
   ?st <- (sub-task (id ?id) (type navigate-to) (arg1 unknown) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action say) (arg "I do not know where to go")))
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 4))))
+  (assert (action-step (step ?say-step)        (action say)    (arg "I do not have that location registered, may I follow you there?")))
+  (assert (action-step (step ?act-step)        (action find)   (arg "user")))
+  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg "user")))
+  (assert (action-step (step (+ ?act-step 2)) (action listen) (arg "stop_following")))
+  (assert (action-step (step (+ ?act-step 3)) (action save)   (arg "location: known_location")))
 )
 
 (defrule resolve-navigate-to-already-there
@@ -400,18 +423,24 @@
   (retract ?st)
 )
 
+;; ── acquire ──────────────────────────────────────────────
+
 (defrule resolve-acquire-in-same-room
   (declare (salience 100))
   ?st <- (sub-task (id ?id) (type acquire) (arg1 ?obj) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   ?rs <- (robot-state (room ?robot-room) (holding ?held))
   (object-state (name ?obj) (room ?robot-room))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc) (retract ?rs)
-  (assert (step-counter (value (+ ?step 2))))
-  (assert (action-step (step ?step)         (action find) (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?step 1))  (action take) (arg (str-cat ?obj))))
+  (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 3))))
+  (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I am looking for " ?obj))))
+  (assert (action-step (step ?act-step)        (action find)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 1)) (action align) (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 2)) (action take)  (arg (str-cat ?obj))))
   (assert (robot-state (room ?robot-room) (holding ?obj)))
 )
 
@@ -441,25 +470,41 @@
   ?st <- (sub-task (id ?id) (type acquire) (arg1 ?obj) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   (not (object-state (name ?obj)))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 2))))
-  (assert (action-step (step ?step)        (action find) (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?step 1)) (action take) (arg (str-cat ?obj))))
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 2))))
+  (assert (act-counter (value (+ ?act-step 7))))
+  (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I do not have a registered location for " ?obj))))
+  (assert (action-step (step (+ ?say-step 1)) (action say)    (arg (str-cat "May I follow you to where " ?obj " is?"))))
+  (assert (action-step (step ?act-step)        (action find)   (arg "user")))
+  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg "user")))
+  (assert (action-step (step (+ ?act-step 2)) (action listen) (arg "stop_following")))
+  (assert (action-step (step (+ ?act-step 3)) (action save)   (arg (str-cat "location: " ?obj))))
+  (assert (action-step (step (+ ?act-step 4)) (action find)   (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 5)) (action align)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 6)) (action take)   (arg (str-cat ?obj))))
 )
+
+;; ── deliver ──────────────────────────────────────────────
 
 (defrule resolve-deliver
   (declare (salience 100))
   ?st <- (sub-task (id ?id) (type deliver)
                    (arg1 ?obj) (arg2 ?dest) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action give) (arg (str-cat ?obj " " ?dest))))
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 1))))
+  (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I am delivering " ?obj " to " ?dest))))
+  (assert (action-step (step ?act-step) (action give) (arg (str-cat ?obj " " ?dest))))
 )
+
+;; ── attend-at ────────────────────────────────────────────
 
 (defrule resolve-attend-already-there
   (declare (salience 100))
@@ -467,11 +512,14 @@
                    (arg1 ?obj) (arg2 ?loc&~unknown) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   (robot-state (room ?loc))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action find) (arg (str-cat ?obj))))
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 1))))
+  (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I am searching for " ?obj))))
+  (assert (action-step (step ?act-step) (action find) (arg (str-cat ?obj))))
 )
 
 (defrule resolve-attend-navigate-first
@@ -501,12 +549,17 @@
   ?st <- (sub-task (id ?id) (type attend-at)
                    (arg1 ?obj) (arg2 unknown) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action find) (arg (str-cat ?obj))))
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 1))))
+  (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I am searching for " ?obj))))
+  (assert (action-step (step ?act-step) (action find) (arg (str-cat ?obj))))
 )
+
+;; ── accompany-to ─────────────────────────────────────────
 
 (defrule resolve-accompany-to
   (declare (salience 100))
@@ -514,11 +567,15 @@
                    (arg1 ?person) (arg2 ?dest&~unknown) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   ?rs <- (robot-state (room ?current) (holding ?held))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc) (retract ?rs)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action follow) (arg (str-cat ?person " " ?dest))))
+  (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I will escort " ?person " to " ?dest))))
+  (assert (action-step (step ?act-step)        (action find)   (arg (str-cat ?person))))
+  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg (str-cat ?person " " ?dest))))
   (assert (robot-state (room ?dest) (holding ?held)))
 )
 
@@ -527,64 +584,92 @@
   ?st <- (sub-task (id ?id) (type accompany-to)
                    (arg1 ?person) (arg2 unknown) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action follow) (arg (str-cat ?person))))
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I will escort " ?person))))
+  (assert (action-step (step ?act-step)        (action find)   (arg (str-cat ?person))))
+  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg (str-cat ?person))))
 )
+
+;; ── communicate ──────────────────────────────────────────
+;;
+;; El briefing anuncia que va a comunicar algo.
+;; La acción real es el say con el contenido.
 
 (defrule resolve-communicate
   (declare (salience 100))
   ?st <- (sub-task (id ?id) (type communicate)
                    (arg1 ?content) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action say) (arg (str-cat ?content))))
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 1))))
+  (assert (action-step (step ?say-step) (action say) (arg "I will now communicate the requested information")))
+  (assert (action-step (step ?act-step) (action say) (arg (str-cat ?content))))
 )
+
+;; ── interact ─────────────────────────────────────────────
 
 (defrule resolve-interact
   (declare (salience 100))
   ?st <- (sub-task (id ?id) (type interact) (arg1 ?person) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 2))))
-  (assert (action-step (step ?step)        (action find) (arg (str-cat ?person))))
-  (assert (action-step (step (+ ?step 1)) (action say)  (arg "greet")))
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 3))))
+  (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will greet " ?person))))
+  (assert (action-step (step ?act-step)        (action find)  (arg (str-cat ?person))))
+  (assert (action-step (step (+ ?act-step 1)) (action focus) (arg (str-cat ?person))))
+  (assert (action-step (step (+ ?act-step 2)) (action say)   (arg "greet")))
 )
+
+;; ── wait-for ─────────────────────────────────────────────
 
 (defrule resolve-wait-for
   (declare (salience 100))
   ?st <- (sub-task (id ?id) (type wait-for) (arg1 ?condition) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?sc <- (step-counter (value ?step))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action listen) (arg (str-cat ?condition))))
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 1))))
+  (assert (action-step (step ?say-step) (action say)    (arg (str-cat "I am waiting for " ?condition))))
+  (assert (action-step (step ?act-step) (action listen) (arg (str-cat ?condition))))
 )
+
+;; ── report-not-found ─────────────────────────────────────
+;;
+;; Error — va directo al act-counter (no tiene briefing previo
+;; porque es un recovery inesperado, no parte del plan).
 
 (defrule resolve-report-not-found
   (declare (salience 100))
   ?st <- (sub-task (id ?id) (type report-not-found) (arg1 ?target) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?sc <- (step-counter (value ?step))
+  ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc)
-  (assert (step-counter (value (+ ?step 1))))
-  (assert (action-step (step ?step) (action say)
+  (retract ?st) (retract ?ac)
+  (assert (act-counter (value (+ ?act-step 1))))
+  (assert (action-step (step ?act-step) (action say)
                        (arg (str-cat "I could not find " ?target))))
 )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 5 — RECOVERY POR FEEDBACK DEL EXECUTOR
-;; salience 150
+;; salience 150 — sin cambios
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrule handle-search-not-found
@@ -616,6 +701,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 6 — SERIALIZACION  (salience 10)
+;;
+;; El orden natural de los step numbers produce:
+;;   1, 2, 3 ...       → briefing (says de anuncio)
+;;   1001, 1002 ...    → acciones reales + says de confirmación
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrule serialize-action-step
