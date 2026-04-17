@@ -14,6 +14,10 @@
 ;;  Para quitar el briefing: eliminar todos los action-step
 ;;  que usen ?say-step y borrar los assert de say-counter.
 ;;
+;;  NOTA: Este archivo requiere que previamente se haya cargado
+;;        gpsr_templates.clp (contiene start, search-result,
+;;        plan-note, ros-message, plan-control).
+;;
 ;;  BioRobotics Laboratory, Facultad de Ingenieria, UNAM
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -77,12 +81,13 @@
 (defrule gpsr-initialize
   (declare (salience 500))
   ?s <- (start (name action-planning))
-  (cd-primitive)
+  (not (plan-note (state GPSR_START)))
+  (not (plan-note (state GPSR_DONE)))
   =>
   (retract ?s)
   (assert (say-counter (value 1)))
   (assert (act-counter (value 1001)))
-  (assert (plan-note (robot Justina) (state GPSR_START)))
+  (assert (plan-note (robot ROBOT) (state GPSR_START)))
 )
 
 
@@ -361,7 +366,7 @@
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
-  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I am going to " ?user-room " to find the user"))))
+  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will go to " ?user-room " to find the user"))))
   (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?user-room))))
   (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?user-room))))
   (assert (robot-state (room ?user-room) (holding nothing)))
@@ -389,10 +394,11 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 2))))
-  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I am navigating to " ?dest))))
-  (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?dest))))
-  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?dest))))
+  (assert (act-counter (value (+ ?act-step 3))))
+  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will navigate to " ?dest))))
+  (assert (action-step (step ?act-step) (action say)  (arg (str-cat "Navigating to " ?dest))))
+  (assert (action-step (step (+ ?act-step 1))        (action goto) (arg (str-cat ?dest))))
+  (assert (action-step (step (+ ?act-step 2)) (action say)  (arg (str-cat "I have arrived at " ?dest))))
   (assert (robot-state (room ?dest) (holding ?held)))
 )
 
@@ -405,12 +411,15 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 4))))
-  (assert (action-step (step ?say-step)        (action say)    (arg "I do not have that location registered, may I follow you there?")))
-  (assert (action-step (step ?act-step)        (action find)   (arg "user")))
-  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg "user")))
-  (assert (action-step (step (+ ?act-step 2)) (action listen) (arg "stop_following")))
-  (assert (action-step (step (+ ?act-step 3)) (action save)   (arg "location: known_location")))
+  (assert (act-counter (value (+ ?act-step 7))))
+  (assert (action-step (step ?say-step)       (action say)    (arg "I could not understand the location, may I follow you to the destination")))
+  (assert (action-step (step ?act-step)       (action say)    (arg (str-cat "Searching for user"))))
+  (assert (action-step (step (+ ?act-step 1)) (action find)   (arg "user")))
+  (assert (action-step (step (+ ?act-step 2)) (action say)    (arg (str-cat "Following user"))))
+  (assert (action-step (step (+ ?act-step 3)) (action follow) (arg "user")))
+  (assert (action-step (step (+ ?act-step 4)) (action listen) (arg "stop_following")))
+  (assert (action-step (step (+ ?act-step 5)) (action save)   (arg "known_location")))
+  (assert (action-step (step (+ ?act-step 6)) (action say)    (arg (str-cat "Saving known_location"))))
 )
 
 (defrule resolve-navigate-to-already-there
@@ -436,11 +445,14 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 3))))
-  (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I am looking for " ?obj))))
-  (assert (action-step (step ?act-step)        (action find)  (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 1)) (action align) (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 2)) (action take)  (arg (str-cat ?obj))))
+  (assert (act-counter (value (+ ?act-step 6))))
+  (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will look for " ?obj))))
+  (assert (action-step (step ?act-step)        (action say)   (arg (str-cat "Searching for " ?obj))))
+  (assert (action-step (step (+ ?act-step 1))  (action find)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 2)) (action align)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 3)) (action say)    (arg (str-cat "Taking " ?obj))))
+  (assert (action-step (step (+ ?act-step 4)) (action take)   (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 5)) (action say)    (arg (str-cat "Object successfully taken"))))
   (assert (robot-state (room ?robot-room) (holding ?obj)))
 )
 
@@ -474,17 +486,24 @@
   ?ac <- (act-counter (value ?act-step))
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
-  (assert (say-counter (value (+ ?say-step 2))))
-  (assert (act-counter (value (+ ?act-step 7))))
+  (assert (say-counter (value (+ ?say-step 4))))
+  (assert (act-counter (value (+ ?act-step 12))))
   (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I do not have a registered location for " ?obj))))
-  (assert (action-step (step (+ ?say-step 1)) (action say)    (arg (str-cat "May I follow you to where " ?obj " is?"))))
-  (assert (action-step (step ?act-step)        (action find)   (arg "user")))
-  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg "user")))
-  (assert (action-step (step (+ ?act-step 2)) (action listen) (arg "stop_following")))
-  (assert (action-step (step (+ ?act-step 3)) (action save)   (arg (str-cat "location: " ?obj))))
-  (assert (action-step (step (+ ?act-step 4)) (action find)   (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 5)) (action align)  (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 6)) (action take)   (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?say-step 1))  (action say)    (arg (str-cat "May I follow you to where " ?obj " is?"))))
+  (assert (action-step (step (+ ?say-step 2))  (action say)    (arg (str-cat "I will find " ?obj))))
+  (assert (action-step (step (+ ?say-step 3))  (action say)    (arg (str-cat "I will take " ?obj))))
+  (assert (action-step (step ?act-step)        (action say)    (arg (str-cat "Searching for user"))))
+  (assert (action-step (step (+ ?act-step 1))  (action find)   (arg "user")))
+  (assert (action-step (step (+ ?act-step 2))  (action say)    (arg (str-cat "Following user"))))
+  (assert (action-step (step (+ ?act-step 3))  (action follow) (arg "user")))
+  (assert (action-step (step (+ ?act-step 4))  (action listen) (arg "stop_following")))
+  (assert (action-step (step (+ ?act-step 5))  (action say)    (arg (str-cat "Saving known_location"))))
+  (assert (action-step (step (+ ?act-step 6))  (action save)   (arg (str-cat "location: " ?obj))))
+  (assert (action-step (step (+ ?act-step 7))  (action say)    (arg (str-cat "Searching " ?obj))))
+  (assert (action-step (step (+ ?act-step 8))  (action find)   (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 9))  (action align)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 10)) (action say)    (arg (str-cat "Taking " ?obj))))
+  (assert (action-step (step (+ ?act-step 11)) (action take)   (arg (str-cat ?obj))))
 )
 
 ;; ── deliver ──────────────────────────────────────────────
@@ -499,9 +518,10 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 1))))
-  (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I am delivering " ?obj " to " ?dest))))
-  (assert (action-step (step ?act-step) (action give) (arg (str-cat ?obj " " ?dest))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will deliver " ?obj " to " ?dest))))
+  (assert (action-step (step ?act-step)        (action say)  (arg (str-cat "Giving " ?obj " to " ?dest))))
+  (assert (action-step (step (+ ?act-step 1))  (action give) (arg (str-cat ?obj " " ?dest))))
 )
 
 ;; ── attend-at ────────────────────────────────────────────
@@ -517,9 +537,10 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 1))))
-  (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I am searching for " ?obj))))
-  (assert (action-step (step ?act-step) (action find) (arg (str-cat ?obj))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I will search for " ?obj))))
+  (assert (action-step (step ?act-step) (action say)  (arg (str-cat "Searching for " ?obj))))
+  (assert (action-step (step (+ ?act-step 1)) (action find) (arg (str-cat ?obj))))
 )
 
 (defrule resolve-attend-navigate-first
@@ -554,9 +575,10 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 1))))
-  (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I am searching for " ?obj))))
-  (assert (action-step (step ?act-step) (action find) (arg (str-cat ?obj))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I will search for " ?obj))))
+  (assert (action-step (step ?act-step) (action say)  (arg (str-cat "Searching for " ?obj))))
+  (assert (action-step (step (+ ?act-step 1)) (action find) (arg (str-cat ?obj))))
 )
 
 ;; ── accompany-to ─────────────────────────────────────────
@@ -572,10 +594,12 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (act-counter (value (+ ?act-step 4))))
   (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I will escort " ?person " to " ?dest))))
-  (assert (action-step (step ?act-step)        (action find)   (arg (str-cat ?person))))
-  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg (str-cat ?person " " ?dest))))
+  (assert (action-step (step ?act-step)        (action say)    (arg (str-cat "Searching for " ?person))))
+  (assert (action-step (step (+ ?act-step 1))  (action find)   (arg (str-cat ?person))))
+  (assert (action-step (step (+ ?act-step 2))  (action say)    (arg (str-cat "Following " ?person " to " ?dest))))
+  (assert (action-step (step (+ ?act-step 3))  (action follow) (arg (str-cat ?person " " ?dest))))
   (assert (robot-state (room ?dest) (holding ?held)))
 )
 
@@ -589,10 +613,12 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (act-counter (value (+ ?act-step 4))))
   (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I will escort " ?person))))
-  (assert (action-step (step ?act-step)        (action find)   (arg (str-cat ?person))))
-  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg (str-cat ?person))))
+  (assert (action-step (step ?act-step)        (action say)    (arg (str-cat "Searching for " ?person))))
+  (assert (action-step (step (+ ?act-step 1))  (action find)   (arg (str-cat ?person))))
+  (assert (action-step (step (+ ?act-step 2))  (action say)    (arg (str-cat "Following " ?person))))
+  (assert (action-step (step (+ ?act-step 3))  (action follow) (arg (str-cat ?person))))
 )
 
 ;; ── communicate ──────────────────────────────────────────
@@ -716,14 +742,41 @@
   (retract ?as)
   (assert (ros-message
     (step ?step)
-    (robot Justina)
+    (robot ROBOT)
     (action ?action)
     (params ?arg)))
 )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; SECCION 7 — FINALIZACION  (salience 5)
+;; SECCION 7 — PASOS FINALES OBLIGATORIOS (salience 20)
+;;
+;; Se añaden al final de cualquier plan:
+;;   1. goto inspection_point
+;;   2. say "test completed"
+;; Solo se añaden si ya se han generado acciones del plan
+;; (act-counter > 1001) y no se han añadido antes.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defrule add-final-steps
+  (declare (salience 20))
+  (not (cd-primitive))
+  (not (sub-task (status pending)))
+  (not (sub-task (status waiting)))
+  (not (final-steps-added))
+  ?ac <- (act-counter (value ?act-step))
+  (test (> ?act-step 1001))   ; Solo si ya se generaron acciones del plan
+  =>
+  (retract ?ac)
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?act-step)      (action goto) (arg "inspection_point")))
+  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg "test completed")))
+  (assert (final-steps-added))
+)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; SECCION 8 — FINALIZACION  (salience 5)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrule gpsr-finish
@@ -734,5 +787,5 @@
   (not (action-step))
   (not (plan-note (state GPSR_DONE)))
   =>
-  (assert (plan-note (robot Justina) (state GPSR_DONE)))
+  (assert (plan-note (robot ROBOT) (state GPSR_DONE)))
 )

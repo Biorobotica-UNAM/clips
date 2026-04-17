@@ -27,7 +27,7 @@
 ;; El supervisor lee params como argumento de la accion.
 (deftemplate ros-message
   (slot step   (type INTEGER) (default 0))
-  (slot robot  (type SYMBOL)  (default Justina))
+  (slot robot  (type SYMBOL)  (default ROBOT))
   (slot action (type SYMBOL)  (default unknown))
   (multislot params)
 )
@@ -41,7 +41,7 @@
 ;;   GPSR_DONE   — plan completado exitosamente
 ;;   GPSR_FAIL   — plan fallido (objetivo no alcanzable)
 (deftemplate plan-note
-  (slot robot (type SYMBOL) (default Justina))
+  (slot robot (type SYMBOL) (default ROBOT))
   (slot state (type SYMBOL) (default unknown))
 )
 
