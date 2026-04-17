@@ -81,20 +81,28 @@
 
    (if (eq ?name NAVIGATE_TO_LAUNDRY) then
       (switch ?p
+         
          (case 1 then
+            (bind ?action say)
+            (bind $?params (create$ I will continue once the door is opened))
+         )
+
+         (case 2 then
             (bind ?action check)
             (bind $?params (create$ door))
          )
-         (case 2 then
+
+
+         (case 3 then
             (bind ?action say)
             (bind $?params (create$ announce_nav_laundry_machine))
          )
-         (case 3 then
+         (case 4 then
             (bind ?action goto)
             ;; Cambia basket por tu waypoint real si aplica
             (bind $?params (create$ basket))
          )
-         (case 4 then
+         (case 5 then
             (bind ?action say)
             (bind $?params (create$ announce_nav_end_laundry_machine))
             (bind ?next-phase done)
@@ -111,11 +119,25 @@
 
    (if (eq ?name RETRIEVE_CLOTHES) then
       (switch ?p
+
          (case 1 then
             (bind ?action take)
             (bind $?params (create$ clothes))
             (bind ?next-phase done)
          )
+
+         (case 2 then
+            (bind ?action say)
+            (bind $?params (create$ i took the clothe and i will go to the table))
+            (bind ?next-phase done)
+         )
+
+         (case 3 then
+            (bind ?action goto)
+            (bind $?params (create$ kitchen_table))
+            (bind ?next-phase done)
+         )
+         
          (default
             (bind ?next-phase done)
          )
