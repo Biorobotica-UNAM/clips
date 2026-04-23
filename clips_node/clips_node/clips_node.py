@@ -130,8 +130,12 @@ class ClipsNode(Node):
         super().__init__("clips_node")
         self.get_logger().info("Initializing CLIPS planning node...")
 
+        self.declare_parameter('plan_name', 'default')
+        plan_name = self.get_parameter('plan_name').get_parameter_value().string_value
+        self.get_logger().info(f"Plan name parameter: {plan_name}")        
+
         self._engine = ClipsEngine()
-        self._loader = RuleLoader(self._engine, self.get_logger())
+        self._loader = RuleLoader(self._engine, self.get_logger(), plan_name)
         self._extractor = PlanExtractor(self._engine, self.get_logger())
         self._plan_log = PlanLogger(self.get_logger())
         self._current_plan: List[str] = []
