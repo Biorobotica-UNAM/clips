@@ -20,7 +20,7 @@
 # ── Estado inicial del robot ──────────────────────────────
 robot:
   name: Justina
-  room: living_room
+  room: instruction_point
   holding: nothing
 
 # ── Objetos conocidos ─────────────────────────────────────
@@ -40,7 +40,11 @@ known_objects:
   - name: dish
     room: kitchen_table
   - name: user
-    room: living_room
+    room: instruction_point
+  - name: iced_tea
+    room: kitchen
+  - name: sugar
+    room: desk
 
 # ── Ubicaciones conocidas ─────────────────────────────────
 known_locations:
@@ -56,3 +60,25 @@ known_locations:
   - name: bookshelf
   - name: coatrack
   - name: shelf
+  - name: cabinet
+  - name: chairs
+  - name: desk
+
+  # nuevas ubicaciones agregadas
+  - name: bed
+  - name: bedside_table
+  - name: trashbin
+  - name: dishwasher
+  - name: potted_plant
+  - name: refrigerator
+  - name: sink
+  - name: armchair
+  - name: desk_lamp
+  - name: waste_basket
+  - name: tv_stand
+  - name: storage_rack
+  - name: lamp
+  - name: side_tables
+  - name: sofa
+  - name: exit
+  - name: instruction_point

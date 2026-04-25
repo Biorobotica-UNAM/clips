@@ -22,7 +22,7 @@
 ;; Mensaje hacia el supervisor — una accion del plan.
 (deftemplate ros-message
   (slot step   (type INTEGER) (default 0))
-  (slot robot  (type SYMBOL)  (default Justina))
+  (slot robot  (type SYMBOL)  (default ROBOT))
   (slot action (type SYMBOL)  (default unknown))
   (multislot params)
 )
@@ -30,6 +30,6 @@
 ;; Anotacion del estado del plan — usada por clips_node.py
 ;; para detectar inicio y fin de planificacion.
 (deftemplate plan-note
-  (slot robot (type SYMBOL) (default Justina))
+  (slot robot (type SYMBOL) (default ROBOT))
   (slot state (type SYMBOL) (default unknown))
 )
