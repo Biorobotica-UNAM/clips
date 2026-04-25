@@ -1,7 +1,5 @@
-gpsr_templates.clp
-gpsr_planning.clp
 #hri_planning.clp
-#pnp_planning.clp
+pnp_planning_Takeshi.clp
 #laundry_planning.clp
 #restaurant_planning.clp
-# robot_inspection.clp
+#robot_inspection.clp
