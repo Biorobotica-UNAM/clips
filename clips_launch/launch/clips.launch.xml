@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     
-    <arg name="plan_name" default="default_plan"/>
+    <arg name="plan_name" default="hri"/>
 
     <!-- Nodo CLIPS (Python) - Sistema de planificación -->
     <node pkg="clips_node" exec="clips_node" name="clips_node" output="screen">

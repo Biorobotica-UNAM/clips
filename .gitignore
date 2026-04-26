@@ -3,6 +3,7 @@
 
 #Clips plan log
 *.log
+plan_execution.log
 #Cmake constructions 
 
 build/
