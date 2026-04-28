@@ -1,3 +1,13 @@
+<<<<<<< HEAD
+==Justina GPSR_START==
+Paso 1: Justina goto unknown
+==Justina GPSR_DONE==
+Paso 4: Justina say test_completed
+==Justina GPSR_START==
+Paso 1: Justina say the_name_of_the_person_in_the_office
+==Justina GPSR_DONE==
+Paso 4: Justina say test_completed
+=======
 ==Justina START_PNP==
 Paso 1: Justina say start_pnp
 ==Justina NAVIGATE_TO_KITCHEN==
@@ -137,3 +147,4 @@ Paso 128: Justina open milk
 ==Justina FINISH_PNP==
 Paso 129: Justina say finish_pnp
 Paso 138: Justina say test_completed 
+>>>>>>> dev/rename

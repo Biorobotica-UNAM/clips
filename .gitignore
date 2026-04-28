@@ -3,9 +3,11 @@
 
 #Clips plan log
 *.log
+plan_execution.log
 #Cmake constructions 
 
 build/
 install/
 log/
 test/
+nl2cd_qwen7b/
