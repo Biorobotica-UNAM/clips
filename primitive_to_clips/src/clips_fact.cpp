@@ -28,6 +28,41 @@ std::string ClipsFact::build(int step, const nlohmann::json &primitive) {
   return format_fact(step, slots);
 }
 
+std::vector<Slot> ClipsFact::base_slots(const nlohmann::json &p) {
+  std::vector<Slot> slots;
+
+  slots.emplace_back("primitive", sym(p.value("primitive", "UNKNOWN")));
+  slots.emplace_back("actor", sym(p.value("actor", "robot")));
+
+  return slots;
+}
+
+std::string ClipsFact::get_sym(const nlohmann::json &j,
+                               const std::string &key) {
+  return sym(get(j, key));
+}
+
+std::string ClipsFact::get_entity(const nlohmann::json &j,
+                                  const std::string &key) {
+  return entity(get(j, key));
+}
+
+void ClipsFact::flatten_object(const nlohmann::json &j,
+                               const std::string &prefix,
+                               std::vector<Slot> &slots) const {
+
+  for (auto it = j.begin(); it != j.end(); ++it) {
+
+    std::string key = prefix.empty() ? it.key() : prefix + "_" + it.key();
+
+    if (it->is_object()) {
+      flatten_object(*it, key, slots);
+    } else {
+      slots.emplace_back(key, sym(*it));
+    }
+  }
+}
+
 std::string ClipsFact::format_fact(int step, const std::vector<Slot> &slots) {
 
   std::string fact = "(cd-primitive (step " + std::to_string(step) + ")";
@@ -74,11 +109,7 @@ std::string ClipsFact::entity(const nlohmann::json &value) {
   return s;
 }
 
-std::vector<Slot> ClipsFact::base_slots(const nlohmann::json &p) {
-  std::vector<Slot> slots;
-
-  slots.emplace_back("primitive", sym(p.value("primitive", "UNKNOWN")));
-  slots.emplace_back("actor", sym(p.value("actor", "robot")));
-
-  return slots;
+std::string ClipsFact::get(const nlohmann::json &obj, const std::string &key,
+                           const std::string &default_vaule) const {
+  return obj.value(key, default_vaule);
 }
