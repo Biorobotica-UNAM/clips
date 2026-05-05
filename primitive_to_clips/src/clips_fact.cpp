@@ -75,7 +75,7 @@ std::string ClipsFact::format_fact(int step, const std::vector<Slot> &slots) {
   return fact;
 }
 
-std::string ClipsFact::sym(const nlohmann::json &value) {
+std::string ClipsFact::sym(const nlohmann::json &value) const {
   if (value.is_null())
     return "unknown";
 
@@ -95,7 +95,7 @@ std::string ClipsFact::sym(const nlohmann::json &value) {
   return lower;
 }
 
-std::string ClipsFact::entity(const nlohmann::json &value) {
+std::string ClipsFact::entity(const nlohmann::json &value) const {
   std::string s = sym(value);
 
   if (s == "unknown")

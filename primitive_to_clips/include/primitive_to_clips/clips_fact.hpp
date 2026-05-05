@@ -28,9 +28,9 @@ protected:
 private:
   std::string format_fact(int step, const std::vector<Slot> &slots);
 
-  std::string sym(const nlohmann::json &value);
+  std::string sym(const nlohmann::json &value) const;
 
-  std::string entity(const nlohmann::json &value);
+  std::string entity(const nlohmann::json &value) const;
 
   std::string get(const nlohmann::json &obj, const std::string &key,
                   const std::string &default_vaule = "unknown") const;

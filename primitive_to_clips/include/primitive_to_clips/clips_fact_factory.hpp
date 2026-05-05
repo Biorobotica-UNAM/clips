@@ -15,5 +15,5 @@ public:
   static std::unique_ptr<ClipsFact> create(const std::string &type);
 
 private:
-  static std::unordered_map<std::string, Creator> &registry;
+  static std::unordered_map<std::string, Creator> &registry();
 };

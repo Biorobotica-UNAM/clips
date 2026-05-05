@@ -10,8 +10,16 @@ find_package(rclcpp REQUIRED)
 find_package(knowledge_interfaces REQUIRED)
 find_package(clips_interfaces REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(std_srvs REQUIRED)
 
-add_executable(primitive_to_clips_node src/primitive_to_clips_node.cpp)
+add_executable(primitive_to_clips_node
+  src/main.cpp
+  src/primitive_to_clips_node.cpp
+  src/world_state_client.cpp
+  src/clips_fact.cpp
+  src/clips_fact_factory.cpp
+  src/clips_facts.cpp
+)
 
 target_include_directories(primitive_to_clips_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -26,6 +34,7 @@ ament_target_dependencies(
   "knowledge_interfaces"
   "clips_interfaces"
   "nlohmann_json"
+  "std_srvs"
 )
 
 install(TARGETS primitive_to_clips_node
