@@ -9,9 +9,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Disparador de planificacion — insertado por clips_node.py.
-;; Usa task-name para evitar colision con la funcion
-;; built-in 'name' de CLIPS.
+;; Disparador de planificacion — insertado por clips_node.
 (deftemplate start (slot name))
 
 ;; Control de ejecucion paso a paso.
@@ -27,9 +25,18 @@
   (multislot params)
 )
 
-;; Anotacion del estado del plan — usada por clips_node.py
+;; Anotacion del estado del plan — usada por clips_node
 ;; para detectar inicio y fin de planificacion.
 (deftemplate plan-note
   (slot robot (type SYMBOL) (default ROBOT))
   (slot state (type SYMBOL) (default unknown))
+)
+
+;; Resultado de una busqueda — generado por el executor
+;; cuando una accion find retorna.
+;;   status: found | not-found
+(deftemplate search-result
+  (slot target (type SYMBOL)  (default unknown))
+  (slot room   (type SYMBOL)  (default unknown))
+  (slot status (type SYMBOL)  (default not-found))
 )

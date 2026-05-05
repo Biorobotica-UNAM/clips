@@ -18,7 +18,10 @@
 
 class WorldStateClient {
 public:
-  explicit WorldStateClient(rclcpp::Node::SharedPtr node);
+  // node     — sibling client_node_ (NOT the main spinning node)
+  // executor — the executor already spinning node on its own thread
+  WorldStateClient(rclcpp::Node::SharedPtr node,
+                   rclcpp::executors::SingleThreadedExecutor &executor);
 
   std::vector<std::string> load();
 
@@ -26,6 +29,7 @@ private:
   using GetWorldState = knowledge_interfaces::srv::GetWorldState;
 
   rclcpp::Node::SharedPtr node_;
+  rclcpp::executors::SingleThreadedExecutor &executor_;
   rclcpp::Client<GetWorldState>::SharedPtr client_;
 
   std::vector<std::string> json_to_facts(const std::string &json_str);

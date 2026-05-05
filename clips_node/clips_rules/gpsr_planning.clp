@@ -11,12 +11,8 @@
 ;;    1..N   → briefing completo ("I am going to X", "I will pick Y"...)
 ;;    1001.. → acciones reales   (goto, find, align, take, give...)
 ;;
-;;  Para quitar el briefing: eliminar todos los action-step
-;;  que usen ?say-step y borrar los assert de say-counter.
-;;
 ;;  NOTA: Este archivo requiere que previamente se haya cargado
-;;        gpsr_templates.clp (contiene start, search-result,
-;;        plan-note, ros-message, plan-control).
+;;        gpsr_templates.clp
 ;;
 ;;  BioRobotics Laboratory, Facultad de Ingenieria, UNAM
 ;;
@@ -27,15 +23,72 @@
 ;; SECCION 1 — TEMPLATES LOCALES
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;
+;; cd-primitive: hecho generado por primitive_to_clips_node.
+;;
+;; Slots comunes a todas las primitivas:
+;;   step, primitive, actor
+;;
+;; Slots de movimiento (PTRANS, ACCOMPANY):
+;;   subtype, source, destination
+;;
+;; Slots de objeto (GRASP, ATRANS, ATTEND):
+;;   subtype, object, object_category, location
+;;
+;; Slots de persona acompañada / destinatario (ACCOMPANY, ATRANS, SOCIAL):
+;;   person_name, person_pose, person_gesture, person_side,
+;;   person_body_part, person_clothing_color, person_clothing_item
+;;
+;; Slots de destinatario de entrega (ATRANS):
+;;   recipient_person_name, recipient_person_pose,
+;;   recipient_person_gesture, recipient_person_side,
+;;   recipient_person_body_part, recipient_location
+;;
+;; Slots de comunicación (MTRANS, SPEAK):
+;;   content, recipient
+;;
+;; Slots de percepción (ATTEND, QUERY):
+;;   query_attribute, query_filter
+;;
 (deftemplate cd-primitive
-  (slot step      (type INTEGER) (default 0))
-  (slot primitive (type SYMBOL)  (default unknown))
-  (slot actor     (type SYMBOL)  (default robot))
-  (slot object    (type SYMBOL)  (default unknown))
-  (slot from      (type SYMBOL)  (default unknown))
-  (slot to        (type SYMBOL)  (default unknown))
-  (slot location  (type SYMBOL)  (default unknown))
-  (slot content   (type SYMBOL)  (default unknown))
+  (slot step                      (type INTEGER) (default 0))
+  (slot primitive                 (type SYMBOL)  (default unknown))
+  (slot actor                     (type SYMBOL)  (default robot))
+  (slot subtype                   (type SYMBOL)  (default unknown))
+
+  ;; movimiento
+  (slot source                    (type SYMBOL)  (default unknown))
+  (slot destination               (type SYMBOL)  (default unknown))
+
+  ;; objeto
+  (slot object                    (type SYMBOL)  (default unknown))
+  (slot object_category           (type SYMBOL)  (default unknown))
+  (slot location                  (type SYMBOL)  (default unknown))
+
+  ;; persona acompañada / social
+  (slot person_name               (type SYMBOL)  (default unknown))
+  (slot person_pose               (type SYMBOL)  (default unknown))
+  (slot person_gesture            (type SYMBOL)  (default unknown))
+  (slot person_side               (type SYMBOL)  (default unknown))
+  (slot person_body_part          (type SYMBOL)  (default unknown))
+  (slot person_clothing_color     (type SYMBOL)  (default unknown))
+  (slot person_clothing_item      (type SYMBOL)  (default unknown))
+
+  ;; destinatario de entrega
+  (slot recipient_person_name     (type SYMBOL)  (default unknown))
+  (slot recipient_person_pose     (type SYMBOL)  (default unknown))
+  (slot recipient_person_gesture  (type SYMBOL)  (default unknown))
+  (slot recipient_person_side     (type SYMBOL)  (default unknown))
+  (slot recipient_person_body_part (type SYMBOL) (default unknown))
+  (slot recipient_location        (type SYMBOL)  (default unknown))
+
+  ;; comunicación
+  (slot content                   (type SYMBOL)  (default unknown))
+  (slot recipient                 (type SYMBOL)  (default unknown))
+
+  ;; percepción
+  (slot query_attribute           (type SYMBOL)  (default unknown))
+  (slot query_filter              (type SYMBOL)  (default unknown))
 )
 
 (deftemplate robot-state
@@ -48,12 +101,13 @@
   (slot room (type SYMBOL) (default unknown))
 )
 
-;; status validos: pending, waiting
+;; status válidos: pending, waiting
 (deftemplate sub-task
   (slot id     (type INTEGER) (default 0))
   (slot type   (type SYMBOL)  (default unknown))
   (slot arg1   (type SYMBOL)  (default unknown))
   (slot arg2   (type SYMBOL)  (default unknown))
+  (slot arg3   (type SYMBOL)  (default unknown))  ; descripcion extra de persona
   (slot status (type SYMBOL)  (default pending))
 )
 
@@ -71,6 +125,71 @@
 ;; Contador para acciones reales (1001, 1002...)
 (deftemplate act-counter
   (slot value (type INTEGER) (default 1001))
+)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; HELPERS — funciones para describir personas
+;;
+;; build-person-desc: produce una cadena legible a partir de
+;; los slots de persona: nombre, pose, gesto+lado+parte.
+;;
+;;  Ejemplos:
+;;   (name Angel)                              → "Angel"
+;;   (pose standing)                           → "the standing person"
+;;   (gesture raising) (side right) (body_part arm) → "person raising right arm"
+;;   (clothing_color white) (clothing_item blouse)  → "person in white blouse"
+;;   todos unknown                             → "person"
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deffunction build-person-desc
+  (?name ?pose ?gesture ?side ?body_part ?clothing_color ?clothing_item)
+
+  (if (neq ?name unknown) then (return (str-cat ?name)))
+
+  (bind ?desc "")
+
+  ;; atributo de pose
+  (if (neq ?pose unknown) then
+    (bind ?desc (str-cat "the " ?pose " person"))
+    (return ?desc))
+
+  ;; atributo de gesto
+  (if (neq ?gesture unknown) then
+    (bind ?desc (str-cat "person " ?gesture))
+    (if (neq ?side unknown) then
+      (bind ?desc (str-cat ?desc " " ?side)))
+    (if (neq ?body_part unknown) then
+      (bind ?desc (str-cat ?desc " " ?body_part)))
+    (return ?desc))
+
+  ;; atributo de ropa
+  (if (neq ?clothing_color unknown) then
+    (bind ?desc (str-cat "person in " ?clothing_color))
+    (if (neq ?clothing_item unknown) then
+      (bind ?desc (str-cat ?desc " " ?clothing_item)))
+    (return ?desc))
+
+  (return "person")
+)
+
+(deffunction build-recipient-desc
+  (?name ?pose ?gesture ?side ?body_part)
+
+  (if (neq ?name unknown) then (return (str-cat ?name)))
+
+  (if (neq ?pose unknown) then
+    (return (str-cat "the " ?pose " person")))
+
+  (if (neq ?gesture unknown) then
+    (bind ?desc (str-cat "person " ?gesture))
+    (if (neq ?side unknown) then
+      (bind ?desc (str-cat ?desc " " ?side)))
+    (if (neq ?body_part unknown) then
+      (bind ?desc (str-cat ?desc " " ?body_part)))
+    (return ?desc))
+
+  (return "user")
 )
 
 
@@ -94,33 +213,110 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 3 — CAPA 1: EXPANSION DE PRIMITIVAS CD
 ;;
-;; Sin cambios — ID = step * 100 + offset garantiza orden.
+;; ID = step * 100 + offset garantiza orden entre primitivas.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defrule expand-atrans
-  (declare (salience 200))
-  ?cd <- (cd-primitive (primitive ATRANS)
-                       (step ?step)
-                       (object ?obj)
-                       (from ?from)
-                       (to ?to))
-  =>
-  (retract ?cd)
-  (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?from)))
-  (assert (sub-task (id (+ ?base 1)) (type acquire)     (arg1 ?obj) (arg2 ?from)))
-  (assert (sub-task (id (+ ?base 2)) (type navigate-to) (arg1 ?to)))
-  (assert (sub-task (id (+ ?base 3)) (type deliver)     (arg1 ?obj) (arg2 ?to)))
-)
+;; ── PTRANS ───────────────────────────────────────────────
 
 (defrule expand-ptrans
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive PTRANS) (step ?step) (to ?dest))
+  ?cd <- (cd-primitive (primitive PTRANS) (step ?step) (destination ?dest))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
   (assert (sub-task (id ?base) (type navigate-to) (arg1 ?dest)))
 )
+
+;; ── GRASP ────────────────────────────────────────────────
+;;
+;; El nodo C++ coloca la ubicacion en el slot 'location'.
+;; Si se conoce, se emite un navigate-to + acquire.
+;; Si es unknown, solo acquire (el planner usará world-state
+;; o caerá en el fallback de ubicación desconocida).
+
+(defrule expand-grasp-with-location
+  (declare (salience 200))
+  ?cd <- (cd-primitive (primitive GRASP)
+                       (step ?step)
+                       (object ?obj)
+                       (location ?loc&~unknown))
+  =>
+  (retract ?cd)
+  (bind ?base (* ?step 100))
+  (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?loc)))
+  (assert (sub-task (id (+ ?base 1)) (type acquire)     (arg1 ?obj) (arg2 ?loc)))
+)
+
+(defrule expand-grasp-unknown-location
+  (declare (salience 190))
+  ?cd <- (cd-primitive (primitive GRASP)
+                       (step ?step)
+                       (object ?obj)
+                       (location unknown))
+  =>
+  (retract ?cd)
+  (bind ?base (* ?step 100))
+  (assert (sub-task (id ?base) (type acquire) (arg1 ?obj) (arg2 unknown)))
+)
+
+;; ── ATRANS ───────────────────────────────────────────────
+;;
+;; Cuatro variantes según si hay recipient_location / recipient_person:
+;;   1. Entrega a persona con ubicación conocida
+;;   2. Entrega a persona sin ubicación (user genérico)
+;;   3. Place a una ubicación (sin persona)
+;;   4. Entrega genérica (destination = user, sin datos de persona)
+
+(defrule expand-atrans-to-person-at-location
+  (declare (salience 210))
+  ?cd <- (cd-primitive (primitive ATRANS)
+                       (step ?step)
+                       (object ?obj)
+                       (source ?src)
+                       (recipient_location ?rloc&~unknown)
+                       (recipient_person_name     ?rpname)
+                       (recipient_person_pose     ?rppose)
+                       (recipient_person_gesture  ?rpgesture)
+                       (recipient_person_side     ?rpside)
+                       (recipient_person_body_part ?rpbp))
+  =>
+  (retract ?cd)
+  (bind ?base (* ?step 100))
+  (bind ?person-desc
+    (build-recipient-desc ?rpname ?rppose ?rpgesture ?rpside ?rpbp))
+  (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?rloc)))
+  (assert (sub-task (id (+ ?base 1)) (type find-person)  (arg1 (sym-cat ?person-desc)) (arg2 ?rloc) (arg3 (sym-cat ?person-desc))))
+  (assert (sub-task (id (+ ?base 2)) (type deliver)      (arg1 ?obj) (arg2 (sym-cat ?person-desc))))
+)
+
+(defrule expand-atrans-place-at-location
+  (declare (salience 200))
+  ?cd <- (cd-primitive (primitive ATRANS)
+                       (step ?step)
+                       (subtype place)
+                       (object ?obj)
+                       (destination ?dest&~unknown&~user))
+  =>
+  (retract ?cd)
+  (bind ?base (* ?step 100))
+  (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?dest)))
+  (assert (sub-task (id (+ ?base 1)) (type place-at)    (arg1 ?obj) (arg2 ?dest)))
+)
+
+(defrule expand-atrans-to-user
+  (declare (salience 190))
+  ?cd <- (cd-primitive (primitive ATRANS)
+                       (step ?step)
+                       (object ?obj)
+                       (destination ?dest))
+  =>
+  (retract ?cd)
+  (bind ?base (* ?step 100))
+  (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?dest)))
+  (assert (sub-task (id (+ ?base 1)) (type deliver)     (arg1 ?obj) (arg2 ?dest)))
+)
+
+;; ── ATTEND ───────────────────────────────────────────────
 
 (defrule expand-attend-with-location
   (declare (salience 200))
@@ -135,8 +331,8 @@
   (assert (sub-task (id (+ ?base 1)) (type attend-at)   (arg1 ?obj) (arg2 ?loc)))
 )
 
-(defrule expand-attend-without-location
-  (declare (salience 200))
+(defrule expand-attend-unknown-location
+  (declare (salience 190))
   ?cd <- (cd-primitive (primitive ATTEND)
                        (step ?step)
                        (object ?obj)
@@ -147,106 +343,76 @@
   (assert (sub-task (id ?base) (type attend-at) (arg1 ?obj) (arg2 unknown)))
 )
 
-(defrule expand-grasp
-  (declare (salience 200))
-  ?cd <- (cd-primitive (primitive GRASP) (step ?step) (object ?obj))
-  =>
-  (retract ?cd)
-  (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base) (type acquire) (arg1 ?obj) (arg2 unknown)))
-)
-
 ;; ── ACCOMPANY ────────────────────────────────────────────
 
-(defrule expand-accompany-explicit-location
+(defrule expand-accompany
   (declare (salience 200))
   ?cd <- (cd-primitive (primitive ACCOMPANY)
                        (step ?step)
-                       (object ?person)
-                       (to ?dest)
-                       (location ?loc&~unknown))
+                       (subtype ?subtype)
+                       (person_name     ?pname)
+                       (person_pose     ?ppose)
+                       (person_gesture  ?pgesture)
+                       (person_side     ?pside)
+                       (person_body_part ?pbp)
+                       (person_clothing_color ?pcc)
+                       (person_clothing_item  ?pci)
+                       (source      ?src)
+                       (destination ?dest))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base)        (type navigate-to)  (arg1 ?loc)))
-  (assert (sub-task (id (+ ?base 1)) (type accompany-to) (arg1 ?person) (arg2 ?dest)))
-)
-
-(defrule expand-accompany-known-in-world-state
-  (declare (salience 200))
-  ?cd <- (cd-primitive (primitive ACCOMPANY)
-                       (step ?step)
-                       (object ?person)
-                       (to ?dest)
-                       (location unknown))
-  (object-state (name ?person) (room ?person-room&~unknown))
-  =>
-  (retract ?cd)
-  (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base)        (type navigate-to)  (arg1 ?person-room)))
-  (assert (sub-task (id (+ ?base 1)) (type accompany-to) (arg1 ?person) (arg2 ?dest)))
-)
-
-(defrule expand-accompany-unknown-location
-  (declare (salience 190))
-  ?cd <- (cd-primitive (primitive ACCOMPANY)
-                       (step ?step)
-                       (object ?person)
-                       (to ?dest&~unknown)
-                       (location unknown))
-  (not (object-state (name ?person)))
-  =>
-  (retract ?cd)
-  (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base)        (type attend-at)    (arg1 ?person) (arg2 unknown)))
-  (assert (sub-task (id (+ ?base 1)) (type accompany-to) (arg1 ?person) (arg2 ?dest)))
-)
-
-(defrule expand-accompany-no-destination
-  (declare (salience 190))
-  ?cd <- (cd-primitive (primitive ACCOMPANY)
-                       (step ?step)
-                       (object ?person)
-                       (to unknown)
-                       (location unknown))
-  (not (object-state (name ?person)))
-  =>
-  (retract ?cd)
-  (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base)        (type attend-at)    (arg1 ?person) (arg2 unknown)))
-  (assert (sub-task (id (+ ?base 1)) (type accompany-to) (arg1 ?person) (arg2 unknown)))
+  (bind ?person-desc
+    (build-person-desc ?pname ?ppose ?pgesture ?pside ?pbp ?pcc ?pci))
+  (bind ?person-sym (sym-cat ?person-desc))
+  ;; Si hay location conocida (source), navegar primero
+  (if (neq ?src unknown) then
+    (assert (sub-task (id ?base)        (type navigate-to)  (arg1 ?src)))
+    (assert (sub-task (id (+ ?base 1)) (type find-person)   (arg1 ?person-sym) (arg2 ?src)   (arg3 ?person-sym)))
+    (assert (sub-task (id (+ ?base 2)) (type accompany-to)  (arg1 ?person-sym) (arg2 ?dest)))
+  else
+    (assert (sub-task (id ?base)        (type find-person)  (arg1 ?person-sym) (arg2 unknown) (arg3 ?person-sym)))
+    (assert (sub-task (id (+ ?base 1)) (type accompany-to)  (arg1 ?person-sym) (arg2 ?dest)))
+  )
 )
 
 ;; ── MTRANS ───────────────────────────────────────────────
+;;
+;; El nuevo C++ ya NO pone 'to' ni 'location'. Usa:
+;;   content   → qué comunicar
+;;   recipient → user / person / etc.
+;; La ubicación del recipient se resuelve con world-state
+;; o se omite si es unknown (el robot habla donde esté).
 
-(defrule expand-mtrans-with-location
-  (declare (salience 200))
+(defrule expand-mtrans-recipient-at-location
+  (declare (salience 210))
   ?cd <- (cd-primitive (primitive MTRANS)
                        (step ?step)
                        (content ?content&~unknown)
-                       (to ?to&~unknown)
+                       (recipient ?recip&~unknown)
                        (location ?loc&~unknown))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
   (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?loc)))
-  (assert (sub-task (id (+ ?base 1)) (type attend-at)   (arg1 ?to) (arg2 ?loc)))
-  (assert (sub-task (id (+ ?base 2)) (type communicate) (arg1 ?content)))
+  (assert (sub-task (id (+ ?base 1)) (type find-person)  (arg1 ?recip) (arg2 ?loc) (arg3 ?recip)))
+  (assert (sub-task (id (+ ?base 2)) (type communicate)  (arg1 ?content)))
 )
 
-(defrule expand-mtrans-recipient-known
+(defrule expand-mtrans-recipient-known-world
   (declare (salience 200))
   ?cd <- (cd-primitive (primitive MTRANS)
                        (step ?step)
                        (content ?content&~unknown)
-                       (to ?to&~unknown)
+                       (recipient ?recip&~unknown)
                        (location unknown))
-  (object-state (name ?to) (room ?to-room&~unknown))
+  (object-state (name ?recip) (room ?recip-room&~unknown))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base)        (type attend-at)   (arg1 ?to) (arg2 ?to-room)))
-  (assert (sub-task (id (+ ?base 1)) (type communicate) (arg1 ?content)))
+  (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?recip-room)))
+  (assert (sub-task (id (+ ?base 1)) (type find-person)  (arg1 ?recip) (arg2 ?recip-room) (arg3 ?recip)))
+  (assert (sub-task (id (+ ?base 2)) (type communicate)  (arg1 ?content)))
 )
 
 (defrule expand-mtrans-recipient-unknown
@@ -254,14 +420,14 @@
   ?cd <- (cd-primitive (primitive MTRANS)
                        (step ?step)
                        (content ?content&~unknown)
-                       (to ?to&~unknown)
+                       (recipient ?recip)
                        (location unknown))
-  (not (object-state (name ?to)))
+  (not (object-state (name ?recip)))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base)        (type attend-at)   (arg1 ?to) (arg2 unknown)))
-  (assert (sub-task (id (+ ?base 1)) (type communicate) (arg1 ?content)))
+  (assert (sub-task (id ?base)        (type find-person)  (arg1 ?recip) (arg2 unknown) (arg3 ?recip)))
+  (assert (sub-task (id (+ ?base 1)) (type communicate)   (arg1 ?content)))
 )
 
 ;; ── SPEAK ────────────────────────────────────────────────
@@ -281,40 +447,57 @@
   (declare (salience 200))
   ?cd <- (cd-primitive (primitive SOCIAL)
                        (step ?step)
-                       (object ?person)
+                       (person_name     ?pname)
+                       (person_pose     ?ppose)
+                       (person_gesture  ?pgesture)
+                       (person_side     ?pside)
+                       (person_body_part ?pbp)
+                       (person_clothing_color ?pcc)
+                       (person_clothing_item  ?pci)
                        (location ?loc&~unknown))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
+  (bind ?person-desc
+    (build-person-desc ?pname ?ppose ?pgesture ?pside ?pbp ?pcc ?pci))
+  (bind ?person-sym (sym-cat ?person-desc))
   (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?loc)))
-  (assert (sub-task (id (+ ?base 1)) (type interact)    (arg1 ?person)))
+  (assert (sub-task (id (+ ?base 1)) (type interact)     (arg1 ?person-sym) (arg2 ?loc)))
 )
 
-(defrule expand-social-known-in-world-state
+(defrule expand-social-known-world
   (declare (salience 200))
   ?cd <- (cd-primitive (primitive SOCIAL)
                        (step ?step)
-                       (object ?person)
+                       (person_name     ?pname&~unknown)
                        (location unknown))
-  (object-state (name ?person) (room ?person-room&~unknown))
+  (object-state (name ?pname) (room ?person-room&~unknown))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
   (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?person-room)))
-  (assert (sub-task (id (+ ?base 1)) (type interact)    (arg1 ?person)))
+  (assert (sub-task (id (+ ?base 1)) (type interact)     (arg1 ?pname) (arg2 ?person-room)))
 )
 
 (defrule expand-social-unknown-location
   (declare (salience 190))
   ?cd <- (cd-primitive (primitive SOCIAL)
                        (step ?step)
-                       (object ?person)
+                       (person_name     ?pname)
+                       (person_pose     ?ppose)
+                       (person_gesture  ?pgesture)
+                       (person_side     ?pside)
+                       (person_body_part ?pbp)
+                       (person_clothing_color ?pcc)
+                       (person_clothing_item  ?pci)
                        (location unknown))
-  (not (object-state (name ?person)))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base) (type interact) (arg1 ?person)))
+  (bind ?person-desc
+    (build-person-desc ?pname ?ppose ?pgesture ?pside ?pbp ?pcc ?pci))
+  (bind ?person-sym (sym-cat ?person-desc))
+  (assert (sub-task (id ?base) (type interact) (arg1 ?person-sym) (arg2 unknown)))
 )
 
 ;; ── WAIT ─────────────────────────────────────────────────
@@ -332,21 +515,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 4 — CAPA 2: RESOLUCION DE PRECONDICIONES
 ;;
-;; Cada resolve-* usa DOS contadores:
-;;   ?say-step  ← de say-counter  → briefing al inicio del plan
-;;   ?act-step  ← de act-counter  → acción real más adelante
-;;
-;; Patrón por tipo:
-;;
-;;  navigate  : say("navigating to X")        | goto X
-;;  acquire   : say("looking for X")          | find | align | take
-;;  acquire?  : say("unknown loc, follow me") | find user | follow | listen | save | find | align | take
-;;  deliver   : say("delivering X to Y")      | give X Y
-;;  attend    : say("searching for X")        | find X
-;;  accompany : say("escorting X to Y")       | find X | follow X Y
-;;  interact  : say("greeting X")             | find X | focus X | say greet
-;;  wait      : say("waiting for X")          | listen X
-;;  communicate: say briefing                 | say content
+;; Arquitectura de doble contador:
+;;   ?say-step ← say-counter  → briefing al inicio del plan
+;;   ?act-step ← act-counter  → acciones reales
 ;;
 ;; salience: 110 especiales, 105 restore, 100 normal, 90 fallback
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -358,7 +529,7 @@
   ?st <- (sub-task (id ?id) (type navigate-to) (arg1 user) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   (object-state (name user) (room ?user-room))
-  ?rs <- (robot-state (room ?current))
+  ?rs <- (robot-state (room ?current) (holding ?held))
   (test (neq ?current ?user-room))
   ?sc <- (say-counter (value ?say-step))
   ?ac <- (act-counter (value ?act-step))
@@ -366,10 +537,10 @@
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
-  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will go to " ?user-room " to find the user"))))
+  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will go to " ?user-room " to find you"))))
   (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?user-room))))
   (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?user-room))))
-  (assert (robot-state (room ?user-room) (holding nothing)))
+  (assert (robot-state (room ?user-room) (holding ?held)))
 )
 
 (defrule resolve-navigate-to-user-already-there
@@ -394,11 +565,10 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 3))))
+  (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will navigate to " ?dest))))
-  (assert (action-step (step ?act-step) (action say)  (arg (str-cat "Navigating to " ?dest))))
-  (assert (action-step (step (+ ?act-step 1))        (action goto) (arg (str-cat ?dest))))
-  (assert (action-step (step (+ ?act-step 2)) (action say)  (arg (str-cat "I have arrived at " ?dest))))
+  (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?dest))))
+  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?dest))))
   (assert (robot-state (room ?dest) (holding ?held)))
 )
 
@@ -411,15 +581,14 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 7))))
-  (assert (action-step (step ?say-step)       (action say)    (arg "I could not understand the location, may I follow you to the destination")))
-  (assert (action-step (step ?act-step)       (action say)    (arg (str-cat "Searching for user"))))
-  (assert (action-step (step (+ ?act-step 1)) (action find)   (arg "user")))
-  (assert (action-step (step (+ ?act-step 2)) (action say)    (arg (str-cat "Following user"))))
-  (assert (action-step (step (+ ?act-step 3)) (action follow) (arg "user")))
-  (assert (action-step (step (+ ?act-step 4)) (action listen) (arg "stop_following")))
-  (assert (action-step (step (+ ?act-step 5)) (action save)   (arg "known_location")))
-  (assert (action-step (step (+ ?act-step 6)) (action say)    (arg (str-cat "Saving known_location"))))
+  (assert (act-counter (value (+ ?act-step 6))))
+  (assert (action-step (step ?say-step)        (action say)    (arg "I could not determine the destination, may I follow you?")))
+  (assert (action-step (step ?act-step)        (action find)   (arg "user")))
+  (assert (action-step (step (+ ?act-step 1)) (action say)    (arg "Following you to the destination")))
+  (assert (action-step (step (+ ?act-step 2)) (action follow) (arg "user")))
+  (assert (action-step (step (+ ?act-step 3)) (action listen) (arg "stop_following")))
+  (assert (action-step (step (+ ?act-step 4)) (action save)   (arg "known_location")))
+  (assert (action-step (step (+ ?act-step 5)) (action say)    (arg "Location saved")))
 )
 
 (defrule resolve-navigate-to-already-there
@@ -445,14 +614,12 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 6))))
-  (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will look for " ?obj))))
-  (assert (action-step (step ?act-step)        (action say)   (arg (str-cat "Searching for " ?obj))))
-  (assert (action-step (step (+ ?act-step 1))  (action find)  (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 2)) (action align)  (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 3)) (action say)    (arg (str-cat "Taking " ?obj))))
-  (assert (action-step (step (+ ?act-step 4)) (action take)   (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 5)) (action say)    (arg (str-cat "Object successfully taken"))))
+  (assert (act-counter (value (+ ?act-step 4))))
+  (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will pick up " ?obj))))
+  (assert (action-step (step ?act-step)        (action find)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 1)) (action align) (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 2)) (action take)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 3)) (action say)   (arg (str-cat "I have picked up " ?obj))))
   (assert (robot-state (room ?robot-room) (holding ?obj)))
 )
 
@@ -482,28 +649,24 @@
   ?st <- (sub-task (id ?id) (type acquire) (arg1 ?obj) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   (not (object-state (name ?obj)))
+  ?rs <- (robot-state (room ?robot-room))
   ?sc <- (say-counter (value ?say-step))
   ?ac <- (act-counter (value ?act-step))
   =>
-  (retract ?st) (retract ?sc) (retract ?ac)
-  (assert (say-counter (value (+ ?say-step 4))))
-  (assert (act-counter (value (+ ?act-step 12))))
-  (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I do not have a registered location for " ?obj))))
-  (assert (action-step (step (+ ?say-step 1))  (action say)    (arg (str-cat "May I follow you to where " ?obj " is?"))))
-  (assert (action-step (step (+ ?say-step 2))  (action say)    (arg (str-cat "I will find " ?obj))))
-  (assert (action-step (step (+ ?say-step 3))  (action say)    (arg (str-cat "I will take " ?obj))))
-  (assert (action-step (step ?act-step)        (action say)    (arg (str-cat "Searching for user"))))
-  (assert (action-step (step (+ ?act-step 1))  (action find)   (arg "user")))
-  (assert (action-step (step (+ ?act-step 2))  (action say)    (arg (str-cat "Following user"))))
-  (assert (action-step (step (+ ?act-step 3))  (action follow) (arg "user")))
-  (assert (action-step (step (+ ?act-step 4))  (action listen) (arg "stop_following")))
-  (assert (action-step (step (+ ?act-step 5))  (action say)    (arg (str-cat "Saving known_location"))))
-  (assert (action-step (step (+ ?act-step 6))  (action save)   (arg (str-cat "location: " ?obj))))
-  (assert (action-step (step (+ ?act-step 7))  (action say)    (arg (str-cat "Searching " ?obj))))
-  (assert (action-step (step (+ ?act-step 8))  (action find)   (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 9))  (action align)  (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 10)) (action say)    (arg (str-cat "Taking " ?obj))))
-  (assert (action-step (step (+ ?act-step 11)) (action take)   (arg (str-cat ?obj))))
+  (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
+  (assert (say-counter (value (+ ?say-step 2))))
+  (assert (act-counter (value (+ ?act-step 8))))
+  (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I do not know where " ?obj " is"))))
+  (assert (action-step (step (+ ?say-step 1)) (action say)    (arg (str-cat "May I follow you to " ?obj "?"))))
+  (assert (action-step (step ?act-step)        (action find)   (arg "user")))
+  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg "user")))
+  (assert (action-step (step (+ ?act-step 2)) (action listen) (arg "stop_following")))
+  (assert (action-step (step (+ ?act-step 3)) (action save)   (arg (str-cat "location: " ?obj))))
+  (assert (action-step (step (+ ?act-step 4)) (action find)   (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 5)) (action align)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 6)) (action take)   (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 7)) (action say)    (arg (str-cat "I have picked up " ?obj))))
+  (assert (robot-state (room ?robot-room) (holding ?obj)))
 )
 
 ;; ── deliver ──────────────────────────────────────────────
@@ -520,8 +683,50 @@
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will deliver " ?obj " to " ?dest))))
-  (assert (action-step (step ?act-step)        (action say)  (arg (str-cat "Giving " ?obj " to " ?dest))))
-  (assert (action-step (step (+ ?act-step 1))  (action give) (arg (str-cat ?obj " " ?dest))))
+  (assert (action-step (step ?act-step)        (action give) (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have delivered " ?obj))))
+)
+
+;; ── place-at ─────────────────────────────────────────────
+
+(defrule resolve-place-at
+  (declare (salience 100))
+  ?st <- (sub-task (id ?id) (type place-at)
+                   (arg1 ?obj) (arg2 ?dest) (status pending))
+  (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
+  =>
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will place " ?obj " on " ?dest))))
+  (assert (action-step (step ?act-step)        (action place) (arg (str-cat ?obj " " ?dest))))
+  (assert (action-step (step (+ ?act-step 1)) (action say)   (arg (str-cat "I have placed " ?obj))))
+)
+
+;; ── find-person ──────────────────────────────────────────
+;;
+;; Sub-tarea generada por ATRANS, ACCOMPANY, SOCIAL y MTRANS
+;; cuando hay un destinatario con descripción de persona.
+;;   arg1 = símbolo de búsqueda (puede ser nombre o descriptor)
+;;   arg2 = ubicación donde buscar
+;;   arg3 = descripción legible para los says
+
+(defrule resolve-find-person
+  (declare (salience 100))
+  ?st <- (sub-task (id ?id) (type find-person)
+                   (arg1 ?target) (arg2 ?loc) (arg3 ?desc) (status pending))
+  (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
+  ?sc <- (say-counter (value ?say-step))
+  ?ac <- (act-counter (value ?act-step))
+  =>
+  (retract ?st) (retract ?sc) (retract ?ac)
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will look for " ?desc))))
+  (assert (action-step (step ?act-step)        (action find) (arg (str-cat ?desc))))
+  (assert (action-step (step (+ ?act-step 1)) (action focus) (arg (str-cat ?desc))))
 )
 
 ;; ── attend-at ────────────────────────────────────────────
@@ -538,9 +743,9 @@
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
-  (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I will search for " ?obj))))
-  (assert (action-step (step ?act-step) (action say)  (arg (str-cat "Searching for " ?obj))))
-  (assert (action-step (step (+ ?act-step 1)) (action find) (arg (str-cat ?obj))))
+  (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will search for " ?obj))))
+  (assert (action-step (step ?act-step)        (action find) (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "Search complete"))))
 )
 
 (defrule resolve-attend-navigate-first
@@ -577,8 +782,8 @@
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I will search for " ?obj))))
-  (assert (action-step (step ?act-step) (action say)  (arg (str-cat "Searching for " ?obj))))
-  (assert (action-step (step (+ ?act-step 1)) (action find) (arg (str-cat ?obj))))
+  (assert (action-step (step ?act-step) (action find) (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "Search complete"))))
 )
 
 ;; ── accompany-to ─────────────────────────────────────────
@@ -594,12 +799,10 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 4))))
+  (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I will escort " ?person " to " ?dest))))
-  (assert (action-step (step ?act-step)        (action say)    (arg (str-cat "Searching for " ?person))))
-  (assert (action-step (step (+ ?act-step 1))  (action find)   (arg (str-cat ?person))))
-  (assert (action-step (step (+ ?act-step 2))  (action say)    (arg (str-cat "Following " ?person " to " ?dest))))
-  (assert (action-step (step (+ ?act-step 3))  (action follow) (arg (str-cat ?person " " ?dest))))
+  (assert (action-step (step ?act-step)        (action follow) (arg (str-cat ?person " " ?dest))))
+  (assert (action-step (step (+ ?act-step 1)) (action say)    (arg (str-cat "I have escorted " ?person " to " ?dest))))
   (assert (robot-state (room ?dest) (holding ?held)))
 )
 
@@ -613,18 +816,13 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 4))))
-  (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I will escort " ?person))))
-  (assert (action-step (step ?act-step)        (action say)    (arg (str-cat "Searching for " ?person))))
-  (assert (action-step (step (+ ?act-step 1))  (action find)   (arg (str-cat ?person))))
-  (assert (action-step (step (+ ?act-step 2))  (action say)    (arg (str-cat "Following " ?person))))
-  (assert (action-step (step (+ ?act-step 3))  (action follow) (arg (str-cat ?person))))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I will accompany " ?person))))
+  (assert (action-step (step ?act-step)        (action follow) (arg (str-cat ?person))))
+  (assert (action-step (step (+ ?act-step 1)) (action say)    (arg (str-cat "Accompanying " ?person))))
 )
 
 ;; ── communicate ──────────────────────────────────────────
-;;
-;; El briefing anuncia que va a comunicar algo.
-;; La acción real es el say con el contenido.
 
 (defrule resolve-communicate
   (declare (salience 100))
@@ -645,7 +843,8 @@
 
 (defrule resolve-interact
   (declare (salience 100))
-  ?st <- (sub-task (id ?id) (type interact) (arg1 ?person) (status pending))
+  ?st <- (sub-task (id ?id) (type interact)
+                   (arg1 ?person) (arg2 ?loc) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   ?sc <- (say-counter (value ?say-step))
   ?ac <- (act-counter (value ?act-step))
@@ -676,9 +875,6 @@
 )
 
 ;; ── report-not-found ─────────────────────────────────────
-;;
-;; Error — va directo al act-counter (no tiene briefing previo
-;; porque es un recovery inesperado, no parte del plan).
 
 (defrule resolve-report-not-found
   (declare (salience 100))
@@ -695,7 +891,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 5 — RECOVERY POR FEEDBACK DEL EXECUTOR
-;; salience 150 — sin cambios
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrule handle-search-not-found
@@ -728,9 +923,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 6 — SERIALIZACION  (salience 10)
 ;;
-;; El orden natural de los step numbers produce:
-;;   1, 2, 3 ...       → briefing (says de anuncio)
-;;   1001, 1002 ...    → acciones reales + says de confirmación
+;; Orden natural de step numbers:
+;;   1, 2, 3 ...    → briefing (says de anuncio)
+;;   1001, 1002 ... → acciones reales
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrule serialize-action-step
@@ -750,12 +945,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 7 — PASOS FINALES OBLIGATORIOS (salience 20)
-;;
-;; Se añaden al final de cualquier plan:
-;;   1. goto inspection_point
-;;   2. say "test completed"
-;; Solo se añaden si ya se han generado acciones del plan
-;; (act-counter > 1001) y no se han añadido antes.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrule add-final-steps
@@ -765,12 +954,12 @@
   (not (sub-task (status waiting)))
   (not (final-steps-added))
   ?ac <- (act-counter (value ?act-step))
-  (test (> ?act-step 1001))   ; Solo si ya se generaron acciones del plan
+  (test (> ?act-step 1001))
   =>
   (retract ?ac)
   (assert (act-counter (value (+ ?act-step 2))))
-  (assert (action-step (step ?act-step)      (action goto) (arg "inspection_point")))
-  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg "test completed")))
+  (assert (action-step (step ?act-step)        (action goto) (arg "inspection_point")))
+  (assert (action-step (step (+ ?act-step 1)) (action say)  (arg "task completed")))
   (assert (final-steps-added))
 )
 

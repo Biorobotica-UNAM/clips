@@ -39,7 +39,6 @@ from clips_interfaces.srv import StringArray
 from clips_node.clips_engine import ClipsEngine
 from clips_node.clips_components import RuleLoader, PlanExtractor
 
-
 # ============================================================
 # Plan Logger
 # ============================================================
@@ -135,6 +134,8 @@ class ClipsNode(Node):
         self._extractor = PlanExtractor(self._engine, self.get_logger())
         self._plan_log = PlanLogger(self.get_logger())
         self._current_plan: List[str] = []
+        # Facts buffered by assert_facts_batch, consumed on start_planning
+        self._pending_facts: List[str] = []
 
         self._publisher = self.create_publisher(String, self._RESULTS_TOPIC, 10)
         self._task_queue = queue.Queue()
@@ -210,14 +211,24 @@ class ClipsNode(Node):
 
     def _handle_start_planning(self, request, response):
         """
-        Reset CLIPS and start a new planning cycle.
+        Reset CLIPS, re-assert the buffered world+primitive facts, and run.
 
-        Called by primitive_to_clips after asserting all facts.
-        Inserts the (start ...) trigger that activates gpsr-initialize.
+        Called by primitive_to_clips after asserting all facts via
+        assert_facts_batch.  The reset guarantees a clean slate on
+        every call — no stale facts from previous planning cycles.
+
+        Flow:
+            1. engine.reset()          — wipe working memory, keep rules
+            2. assert pending_facts    — world state + cd-primitives
+            3. assert (start ...)      — fire gpsr-initialize
+            4. run + collect plan
         """
 
         def task():
             self._current_plan.clear()
+            self._engine.reset()
+            self._engine.assert_facts(self._pending_facts)
+            self._pending_facts.clear()
             self._engine.assert_fact(self._START_FACT)
             self._run_and_collect_plan()
 
@@ -238,11 +249,20 @@ class ClipsNode(Node):
         return response
 
     def _handle_assert_facts_batch(self, request, response):
-        """Assert multiple facts and run the engine."""
+        """
+        Buffer facts for the upcoming planning cycle.
+
+        Does NOT run the engine — that happens in _handle_start_planning
+        so that CLIPS always starts from a clean reset with the latest
+        world state and primitives.
+        """
 
         def task():
-            self._engine.assert_facts(request.data)
-            self._run_and_collect_plan()
+            self._pending_facts = list(request.data)
+            self.get_logger().info(
+                f"Buffered {len(self._pending_facts)} facts, "
+                "waiting for start_planning trigger."
+            )
 
         self._enqueue(task)
         response.successful = True

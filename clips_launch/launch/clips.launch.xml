@@ -23,7 +23,7 @@
     -->
 
     <!-- Nodo Primitive_to_clips - Sistema de planificación -->
-    <node pkg="primitive_to_clips" exec="primitive_to_clips" name="primitive_to_clips" output="screen">
+    <node pkg="primitive_to_clips" exec="primitive_to_clips_node" name="primitive_to_clips_node" output="screen">
         <param name="use_sim_time" value="false"/>
     </node>
 
