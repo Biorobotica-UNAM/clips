@@ -29,25 +29,25 @@
 ;; Slots comunes a todas las primitivas:
 ;;   step, primitive, actor
 ;;
-;; Slots de movimiento (PTRANS, ACCOMPANY):
+;; Slots de movimiento (ptrans, accompany):
 ;;   subtype, source, destination
 ;;
-;; Slots de objeto (GRASP, ATRANS, ATTEND):
+;; Slots de objeto (grasp, atrans, attend):
 ;;   subtype, object, object_category, location
 ;;
-;; Slots de persona acompañada / destinatario (ACCOMPANY, ATRANS, SOCIAL):
+;; Slots de persona acompañada / destinatario (accompany, atrans, social):
 ;;   person_name, person_pose, person_gesture, person_side,
 ;;   person_body_part, person_clothing_color, person_clothing_item
 ;;
-;; Slots de destinatario de entrega (ATRANS):
+;; Slots de destinatario de entrega (atrans):
 ;;   recipient_person_name, recipient_person_pose,
 ;;   recipient_person_gesture, recipient_person_side,
 ;;   recipient_person_body_part, recipient_location
 ;;
-;; Slots de comunicación (MTRANS, SPEAK):
+;; Slots de comunicación (mtrans, speak):
 ;;   content, recipient
 ;;
-;; Slots de percepción (ATTEND, QUERY):
+;; Slots de percepción (attend, query):
 ;;   query_attribute, query_filter
 ;;
 (deftemplate cd-primitive
@@ -216,18 +216,18 @@
 ;; ID = step * 100 + offset garantiza orden entre primitivas.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; ── PTRANS ───────────────────────────────────────────────
+;; ── ptrans ───────────────────────────────────────────────
 
 (defrule expand-ptrans
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive PTRANS) (step ?step) (destination ?dest))
+  ?cd <- (cd-primitive (primitive ptrans) (step ?step) (destination ?dest))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
   (assert (sub-task (id ?base) (type navigate-to) (arg1 ?dest)))
 )
 
-;; ── GRASP ────────────────────────────────────────────────
+;; ── grasp ────────────────────────────────────────────────
 ;;
 ;; El nodo C++ coloca la ubicacion en el slot 'location'.
 ;; Si se conoce, se emite un navigate-to + acquire.
@@ -236,7 +236,7 @@
 
 (defrule expand-grasp-with-location
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive GRASP)
+  ?cd <- (cd-primitive (primitive grasp)
                        (step ?step)
                        (object ?obj)
                        (location ?loc&~unknown))
@@ -249,7 +249,7 @@
 
 (defrule expand-grasp-unknown-location
   (declare (salience 190))
-  ?cd <- (cd-primitive (primitive GRASP)
+  ?cd <- (cd-primitive (primitive grasp)
                        (step ?step)
                        (object ?obj)
                        (location unknown))
@@ -259,7 +259,7 @@
   (assert (sub-task (id ?base) (type acquire) (arg1 ?obj) (arg2 unknown)))
 )
 
-;; ── ATRANS ───────────────────────────────────────────────
+;; ── atrans ───────────────────────────────────────────────
 ;;
 ;; Cuatro variantes según si hay recipient_location / recipient_person:
 ;;   1. Entrega a persona con ubicación conocida
@@ -269,7 +269,7 @@
 
 (defrule expand-atrans-to-person-at-location
   (declare (salience 210))
-  ?cd <- (cd-primitive (primitive ATRANS)
+  ?cd <- (cd-primitive (primitive atrans)
                        (step ?step)
                        (object ?obj)
                        (source ?src)
@@ -291,7 +291,7 @@
 
 (defrule expand-atrans-place-at-location
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive ATRANS)
+  ?cd <- (cd-primitive (primitive atrans)
                        (step ?step)
                        (subtype place)
                        (object ?obj)
@@ -305,7 +305,7 @@
 
 (defrule expand-atrans-to-user
   (declare (salience 190))
-  ?cd <- (cd-primitive (primitive ATRANS)
+  ?cd <- (cd-primitive (primitive atrans)
                        (step ?step)
                        (object ?obj)
                        (destination ?dest))
@@ -316,11 +316,11 @@
   (assert (sub-task (id (+ ?base 1)) (type deliver)     (arg1 ?obj) (arg2 ?dest)))
 )
 
-;; ── ATTEND ───────────────────────────────────────────────
+;; ── attend ───────────────────────────────────────────────
 
 (defrule expand-attend-with-location
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive ATTEND)
+  ?cd <- (cd-primitive (primitive attend)
                        (step ?step)
                        (object ?obj)
                        (location ?loc&~unknown))
@@ -333,7 +333,7 @@
 
 (defrule expand-attend-unknown-location
   (declare (salience 190))
-  ?cd <- (cd-primitive (primitive ATTEND)
+  ?cd <- (cd-primitive (primitive attend)
                        (step ?step)
                        (object ?obj)
                        (location unknown))
@@ -343,11 +343,11 @@
   (assert (sub-task (id ?base) (type attend-at) (arg1 ?obj) (arg2 unknown)))
 )
 
-;; ── ACCOMPANY ────────────────────────────────────────────
+;; ── accompany ────────────────────────────────────────────
 
 (defrule expand-accompany
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive ACCOMPANY)
+  ?cd <- (cd-primitive (primitive accompany)
                        (step ?step)
                        (subtype ?subtype)
                        (person_name     ?pname)
@@ -376,7 +376,7 @@
   )
 )
 
-;; ── MTRANS ───────────────────────────────────────────────
+;; ── mtrans ───────────────────────────────────────────────
 ;;
 ;; El nuevo C++ ya NO pone 'to' ni 'location'. Usa:
 ;;   content   → qué comunicar
@@ -386,7 +386,7 @@
 
 (defrule expand-mtrans-recipient-at-location
   (declare (salience 210))
-  ?cd <- (cd-primitive (primitive MTRANS)
+  ?cd <- (cd-primitive (primitive mtrans)
                        (step ?step)
                        (content ?content&~unknown)
                        (recipient ?recip&~unknown)
@@ -401,7 +401,7 @@
 
 (defrule expand-mtrans-recipient-known-world
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive MTRANS)
+  ?cd <- (cd-primitive (primitive mtrans)
                        (step ?step)
                        (content ?content&~unknown)
                        (recipient ?recip&~unknown)
@@ -417,7 +417,7 @@
 
 (defrule expand-mtrans-recipient-unknown
   (declare (salience 190))
-  ?cd <- (cd-primitive (primitive MTRANS)
+  ?cd <- (cd-primitive (primitive mtrans)
                        (step ?step)
                        (content ?content&~unknown)
                        (recipient ?recip)
@@ -430,22 +430,22 @@
   (assert (sub-task (id (+ ?base 1)) (type communicate)   (arg1 ?content)))
 )
 
-;; ── SPEAK ────────────────────────────────────────────────
+;; ── speak ────────────────────────────────────────────────
 
 (defrule expand-speak
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive SPEAK) (step ?step) (content ?content))
+  ?cd <- (cd-primitive (primitive speak) (step ?step) (content ?content))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
   (assert (sub-task (id ?base) (type communicate) (arg1 ?content)))
 )
 
-;; ── SOCIAL ───────────────────────────────────────────────
+;; ── social ───────────────────────────────────────────────
 
 (defrule expand-social-with-location
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive SOCIAL)
+  ?cd <- (cd-primitive (primitive social)
                        (step ?step)
                        (person_name     ?pname)
                        (person_pose     ?ppose)
@@ -467,7 +467,7 @@
 
 (defrule expand-social-known-world
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive SOCIAL)
+  ?cd <- (cd-primitive (primitive social)
                        (step ?step)
                        (person_name     ?pname&~unknown)
                        (location unknown))
@@ -481,7 +481,7 @@
 
 (defrule expand-social-unknown-location
   (declare (salience 190))
-  ?cd <- (cd-primitive (primitive SOCIAL)
+  ?cd <- (cd-primitive (primitive social)
                        (step ?step)
                        (person_name     ?pname)
                        (person_pose     ?ppose)
@@ -500,11 +500,11 @@
   (assert (sub-task (id ?base) (type interact) (arg1 ?person-sym) (arg2 unknown)))
 )
 
-;; ── WAIT ─────────────────────────────────────────────────
+;; ── wait ─────────────────────────────────────────────────
 
 (defrule expand-wait
   (declare (salience 200))
-  ?cd <- (cd-primitive (primitive WAIT) (step ?step) (object ?condition))
+  ?cd <- (cd-primitive (primitive wait) (step ?step) (object ?condition))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
@@ -707,7 +707,7 @@
 
 ;; ── find-person ──────────────────────────────────────────
 ;;
-;; Sub-tarea generada por ATRANS, ACCOMPANY, SOCIAL y MTRANS
+;; Sub-tarea generada por atrans, accompany, social y mtrans
 ;; cuando hay un destinatario con descripción de persona.
 ;;   arg1 = símbolo de búsqueda (puede ser nombre o descriptor)
 ;;   arg2 = ubicación donde buscar
