@@ -97,16 +97,19 @@
             (bind ?action say)
             (bind $?params (create$ announce_nav_laundry_machine))
          )
+
          (case 4 then
             (bind ?action goto)
             ;; Cambia basket por tu waypoint real si aplica
-            (bind $?params (create$ basket))
+            (bind $?params (create$ living_room))
          )
+
          (case 5 then
             (bind ?action say)
             (bind $?params (create$ announce_nav_end_laundry_machine))
             (bind ?next-phase done)
          )
+
          (default
             (bind ?next-phase done)
          )
@@ -121,20 +124,33 @@
       (switch ?p
 
          (case 1 then
-            (bind ?action take)
-            (bind $?params (create$ clothes))
-            (bind ?next-phase done)
+            (bind ?action say)
+            (bind $?params (create$ i will try to find a cloth))
          )
 
          (case 2 then
-            (bind ?action say)
-            (bind $?params (create$ i took the clothe and i will go to the table))
-            (bind ?next-phase done)
+            (bind ?action find)
+            (bind $?params (create$ object_cloth))
          )
 
          (case 3 then
+            (bind ?action say)
+            (bind $?params (create$ i found the cloth and i will take it))
+         )
+
+         (case 4 then
+            (bind ?action say)
+            (bind $?params (create$ Now I have the cloth and I will navigate to the table))
+         )
+
+         (case 5 then
             (bind ?action goto)
             (bind $?params (create$ kitchen_table))
+         )
+
+         (case 6 then
+            (bind ?action say)
+            (bind $?params (create$ I will place the cloth on the table))
             (bind ?next-phase done)
          )
          
@@ -180,20 +196,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrule next-macro
-   (declare (salience 10))
-   ?s  <- (state (name ?name) (phase done))
-   ?st <- (stack (states ?name $?rest))
+   ?s <- (state (name ?name) (phase done))
+   ?st <- (stack (states $?all))
    =>
    (retract ?s)
    (retract ?st)
+
+   (bind $?rest (rest$ $?all))
 
    (if (> (length$ $?rest) 0) then
       (bind ?next (nth$ 1 $?rest))
 
       (assert (stack (states $?rest)))
-      (assert (plan-note (robot Justina) (state ?next)))
+
+      ;; GENERAR NOTA DEL NUEVO ESTADO
+      (assert (plan-note
+                (robot Justina)
+                (state ?next)))
+
       (assert (state (name ?next) (phase 1)))
-    else
-      (assert (plan-note (robot Justina) (state PLAN_FINISHED)))
    )
 )
