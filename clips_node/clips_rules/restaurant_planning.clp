@@ -172,13 +172,16 @@
             (bind $?params (create$ navigating_customer))
          )
 
-         (case 2 then
+         (case 2 then (bind ?action unfocus) 
+         (bind $?params (create$ person)))
+         
+         (case 3 then
             ;; Navega al tf detectado
             (bind ?action goto)
             (bind $?params (create$ door))
          )
 
-         (case 3 then
+         (case 4 then
             (bind ?action say)
             (bind $?params (create$ arrived_customer))
          )
@@ -218,10 +221,10 @@
             (bind $?params (create$ order_received))
          )
 
-         (case 5 then
-            (bind ?action unfocus)
-            (bind $?params (create$ person))
-         )
+         ; (case 5 then
+         ;    (bind ?action unfocus)
+         ;    (bind $?params (create$ person))
+         ; )
 
          (default
             (bind ?next-phase done))
