@@ -121,7 +121,7 @@
 
          (case 2 then
             
-            (bind ?action save_location)
+            (bind ?action saveloc)
             (bind $?params (create$ restaurant_start))
          )
 
