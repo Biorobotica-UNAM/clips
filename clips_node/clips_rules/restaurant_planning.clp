@@ -150,6 +150,12 @@
          )
 
          (case 3 then
+            
+            (bind ?action saveloc)
+            (bind $?params (create$ customer))
+         )
+
+         (case 4 then
             (bind ?action focus)
             (bind $?params (create$ person))
          )
@@ -178,7 +184,7 @@
          (case 3 then
             ;; Navega al tf detectado
             (bind ?action goto)
-            (bind $?params (create$ door))
+            (bind $?params (create$ customer))
          )
 
          (case 4 then
@@ -201,24 +207,24 @@
 
          (case 1 then
             (bind ?action say)
-            (bind $?params (create$ ask_order))
+            (bind $?params (create$ introduce_waitress))
          )
 
          (case 2 then
             ;; Escucha orden
             (bind ?action listen)
-            (bind $?params (create$ restaurant_order))
-         )
+            (bind $?params (create$ drink))
+         );restaurant_order
 
          (case 3 then
             ;; Guarda semantic result
             (bind ?action save)
-            (bind $?params (create$ customer_order))
+            (bind $?params (create$ order_1))
          )
 
          (case 4 then
             (bind ?action say)
-            (bind $?params (create$ order_received))
+            (bind $?params (create$ confirm_order_1))
          )
 
          ; (case 5 then
