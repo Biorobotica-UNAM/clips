@@ -6,13 +6,14 @@ WorldStateClient::WorldStateClient(
     rclcpp::Node::SharedPtr node,
     rclcpp::executors::SingleThreadedExecutor &executor)
     : node_{node}, executor_{executor} {
-  client_ = node_->create_client<GetWorldState>("/world/get_state");
+  client_ = node_->create_client<GetWorldState>(
+      "/knowledge/knowledge_manager/world/get_state");
 }
 
 std::vector<std::string> WorldStateClient::load() {
   if (!client_->wait_for_service(std::chrono::seconds(3))) {
-    RCLCPP_WARN(node_->get_logger(),
-                "/world/get_state not available. Using empty world.");
+    RCLCPP_WARN(node_->get_logger(), "/world/get_state not available. "
+                                     "Using empty world.");
     return {};
   }
 
