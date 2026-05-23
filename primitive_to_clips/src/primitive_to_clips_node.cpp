@@ -11,7 +11,7 @@
 PrimitiveToClipsNode::PrimitiveToClipsNode() : Node("primitive_to_clips") {
 
   service_ = create_service<StringSrv>(
-      "primitive_to_clips/convert",
+      "/planning/primitive_to_clips/convert",
       std::bind(&PrimitiveToClipsNode::handle_convert, this,
                 std::placeholders::_1, std::placeholders::_2));
 
@@ -20,10 +20,10 @@ PrimitiveToClipsNode::PrimitiveToClipsNode() : Node("primitive_to_clips") {
   client_node_ =
       rclcpp::Node::make_shared("primitive_to_clips_clients", client_opts);
 
-  assert_client_ =
-      client_node_->create_client<StringArray>("clips/assert_facts_batch");
+  assert_client_ = client_node_->create_client<StringArray>(
+      "/planning/clips/assert_facts_batch");
   planning_client_ =
-      client_node_->create_client<Trigger>("clips/start_planning");
+      client_node_->create_client<Trigger>("/planning/clips/start_planning");
 
   client_executor_ =
       std::make_unique<rclcpp::executors::SingleThreadedExecutor>();

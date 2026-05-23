@@ -18,6 +18,11 @@ std::vector<std::string> WorldStateClient::load() {
   }
 
   auto request = std::make_shared<GetWorldState::Request>();
+
+  request->category = "world";
+  request->id = "";
+  request->attribute = "";
+
   auto future = client_->async_send_request(request);
 
   // executor_ is already spinning node_ on a background thread —
