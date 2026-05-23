@@ -32,6 +32,11 @@
   (slot state (type SYMBOL) (default unknown))
 )
 
+;; Locaciones conocidas por el robot.
+(deftemplate known-location
+  (slot name (type SYMBOL) (default unknown))
+)
+
 ;; Resultado de una busqueda — generado por el executor
 ;; cuando una accion find retorna.
 ;;   status: found | not-found

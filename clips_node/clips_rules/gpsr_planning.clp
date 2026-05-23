@@ -92,8 +92,11 @@
 )
 
 (deftemplate robot-state
-  (slot room    (type SYMBOL) (default unknown))
-  (slot holding (type SYMBOL) (default nothing))
+  (slot name       (type SYMBOL) (default unknown))
+  (slot room       (type SYMBOL) (default unknown))
+  (slot left_hand  (type SYMBOL) (default nothing))
+  (slot right_hand (type SYMBOL) (default nothing))
+  (slot holding    (type SYMBOL) (default nothing))
 )
 
 (deftemplate object-state
@@ -303,17 +306,49 @@
   (assert (sub-task (id (+ ?base 1)) (type place-at)    (arg1 ?obj) (arg2 ?dest)))
 )
 
-(defrule expand-atrans-to-user
-  (declare (salience 190))
+;; Destino conocido (no unknown, no place) → navegar y entregar
+(defrule expand-atrans-to-known-dest
+  (declare (salience 195))
   ?cd <- (cd-primitive (primitive atrans)
                        (step ?step)
                        (object ?obj)
-                       (destination ?dest))
+                       (destination ?dest&~unknown))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
   (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?dest)))
   (assert (sub-task (id (+ ?base 1)) (type deliver)     (arg1 ?obj) (arg2 ?dest)))
+)
+
+;; Destino unknown pero objeto con ubicación conocida en world-state
+;; → acquire (ir a buscar el objeto) y luego deliver al user
+(defrule expand-atrans-unknown-dest-known-object
+  (declare (salience 193))
+  ?cd <- (cd-primitive (primitive atrans)
+                       (step ?step)
+                       (object ?obj&~unknown)
+                       (destination unknown))
+  (object-state (name ?obj) (room ?obj-room&~unknown))
+  =>
+  (retract ?cd)
+  (bind ?base (* ?step 100))
+  (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?obj-room)))
+  (assert (sub-task (id (+ ?base 1)) (type acquire)     (arg1 ?obj) (arg2 ?obj-room)))
+  (assert (sub-task (id (+ ?base 2)) (type deliver)     (arg1 ?obj) (arg2 user)))
+)
+
+;; Destino unknown y objeto sin ubicación conocida → fallback follow user
+(defrule expand-atrans-unknown-dest-unknown-object
+  (declare (salience 190))
+  ?cd <- (cd-primitive (primitive atrans)
+                       (step ?step)
+                       (object ?obj)
+                       (destination unknown))
+  =>
+  (retract ?cd)
+  (bind ?base (* ?step 100))
+  (assert (sub-task (id ?base)        (type navigate-to) (arg1 unknown)))
+  (assert (sub-task (id (+ ?base 1)) (type deliver)     (arg1 ?obj) (arg2 user)))
 )
 
 ;; ── attend ───────────────────────────────────────────────
@@ -529,7 +564,7 @@
   ?st <- (sub-task (id ?id) (type navigate-to) (arg1 user) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   (object-state (name user) (room ?user-room))
-  ?rs <- (robot-state (room ?current) (holding ?held))
+  ?rs <- (robot-state (name ?rname) (room ?current) (left_hand ?lh) (right_hand ?rh) (holding ?held))
   (test (neq ?current ?user-room))
   ?sc <- (say-counter (value ?say-step))
   ?ac <- (act-counter (value ?act-step))
@@ -540,7 +575,7 @@
   (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will go to " ?user-room " to find you"))))
   (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?user-room))))
   (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?user-room))))
-  (assert (robot-state (room ?user-room) (holding ?held)))
+  (assert (robot-state (name ?rname) (room ?user-room) (left_hand ?lh) (right_hand ?rh) (holding ?held)))
 )
 
 (defrule resolve-navigate-to-user-already-there
@@ -558,7 +593,7 @@
   ?st <- (sub-task (id ?id) (type navigate-to)
                    (arg1 ?dest&~user&~unknown) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?rs <- (robot-state (room ?current) (holding ?held))
+  ?rs <- (robot-state (name ?rname) (room ?current) (left_hand ?lh) (right_hand ?rh) (holding ?held))
   (test (neq ?current ?dest))
   ?sc <- (say-counter (value ?say-step))
   ?ac <- (act-counter (value ?act-step))
@@ -569,7 +604,7 @@
   (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will navigate to " ?dest))))
   (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?dest))))
   (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?dest))))
-  (assert (robot-state (room ?dest) (holding ?held)))
+  (assert (robot-state (name ?rname) (room ?dest) (left_hand ?lh) (right_hand ?rh) (holding ?held)))
 )
 
 (defrule resolve-navigate-to-unknown-dest
@@ -607,7 +642,7 @@
   (declare (salience 100))
   ?st <- (sub-task (id ?id) (type acquire) (arg1 ?obj) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?rs <- (robot-state (room ?robot-room) (holding ?held))
+  ?rs <- (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh) (holding ?held))
   (object-state (name ?obj) (room ?robot-room))
   ?sc <- (say-counter (value ?say-step))
   ?ac <- (act-counter (value ?act-step))
@@ -620,7 +655,7 @@
   (assert (action-step (step (+ ?act-step 1)) (action align) (arg (str-cat ?obj))))
   (assert (action-step (step (+ ?act-step 2)) (action take)  (arg (str-cat ?obj))))
   (assert (action-step (step (+ ?act-step 3)) (action say)   (arg (str-cat "I have picked up " ?obj))))
-  (assert (robot-state (room ?robot-room) (holding ?obj)))
+  (assert (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh) (holding ?obj)))
 )
 
 (defrule resolve-acquire-navigate-first
@@ -649,7 +684,7 @@
   ?st <- (sub-task (id ?id) (type acquire) (arg1 ?obj) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   (not (object-state (name ?obj)))
-  ?rs <- (robot-state (room ?robot-room))
+  ?rs <- (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh))
   ?sc <- (say-counter (value ?say-step))
   ?ac <- (act-counter (value ?act-step))
   =>
@@ -666,7 +701,7 @@
   (assert (action-step (step (+ ?act-step 5)) (action align)  (arg (str-cat ?obj))))
   (assert (action-step (step (+ ?act-step 6)) (action take)   (arg (str-cat ?obj))))
   (assert (action-step (step (+ ?act-step 7)) (action say)    (arg (str-cat "I have picked up " ?obj))))
-  (assert (robot-state (room ?robot-room) (holding ?obj)))
+  (assert (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh) (holding ?obj)))
 )
 
 ;; ── deliver ──────────────────────────────────────────────
@@ -793,7 +828,7 @@
   ?st <- (sub-task (id ?id) (type accompany-to)
                    (arg1 ?person) (arg2 ?dest&~unknown) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  ?rs <- (robot-state (room ?current) (holding ?held))
+  ?rs <- (robot-state (name ?rname) (room ?current) (left_hand ?lh) (right_hand ?rh) (holding ?held))
   ?sc <- (say-counter (value ?say-step))
   ?ac <- (act-counter (value ?act-step))
   =>
@@ -803,7 +838,7 @@
   (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I will escort " ?person " to " ?dest))))
   (assert (action-step (step ?act-step)        (action follow) (arg (str-cat ?person " " ?dest))))
   (assert (action-step (step (+ ?act-step 1)) (action say)    (arg (str-cat "I have escorted " ?person " to " ?dest))))
-  (assert (robot-state (room ?dest) (holding ?held)))
+  (assert (robot-state (name ?rname) (room ?dest) (left_hand ?lh) (right_hand ?rh) (holding ?held)))
 )
 
 (defrule resolve-accompany-to-unknown-dest

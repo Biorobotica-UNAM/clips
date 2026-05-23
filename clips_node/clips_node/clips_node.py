@@ -58,8 +58,8 @@ class PlanLogger:
     _LOG_FILENAME = "plan_execution.log"
 
     _SEARCH_PATHS = (
-        Path("src") / "Knowledge" / "knowledge_bank",
         Path("src") / "Planning" / "clips",
+        Path("src") / "Knowledge" / "knowledge_bank",
         Path("src") / "clips",
         Path("clips"),
     )
