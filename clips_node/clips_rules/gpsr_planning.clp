@@ -9,7 +9,7 @@
 ;;  El serializer ordena por step, por lo que el plan siempre
 ;;  tiene la forma:
 ;;    1..N   → briefing completo ("I am going to X", "I will pick Y"...)
-;;    1001.. → acciones reales   (goto, find, align, take, give...)
+;;    1001.. → acciones reales   (go_to, find, align, take, give...)
 ;;
 ;;  NOTA: Este archivo requiere que previamente se haya cargado
 ;;        gpsr_templates.clp
@@ -573,7 +573,7 @@
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will go to " ?user-room " to find you"))))
-  (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?user-room))))
+  (assert (action-step (step ?act-step)        (action go_to) (arg (str-cat ?user-room))))
   (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?user-room))))
   (assert (robot-state (name ?rname) (room ?user-room) (left_hand ?lh) (right_hand ?rh) (holding ?held)))
 )
@@ -602,7 +602,7 @@
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will navigate to " ?dest))))
-  (assert (action-step (step ?act-step)        (action goto) (arg (str-cat ?dest))))
+  (assert (action-step (step ?act-step)        (action go_to) (arg (str-cat ?dest))))
   (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "I have arrived at " ?dest))))
   (assert (robot-state (name ?rname) (room ?dest) (left_hand ?lh) (right_hand ?rh) (holding ?held)))
 )
@@ -993,7 +993,7 @@
   =>
   (retract ?ac)
   (assert (act-counter (value (+ ?act-step 2))))
-  (assert (action-step (step ?act-step)        (action goto) (arg "inspection_point")))
+  (assert (action-step (step ?act-step)        (action go_to) (arg "inspection_point")))
   (assert (action-step (step (+ ?act-step 1)) (action say)  (arg "task completed")))
   (assert (final-steps-added))
 )
