@@ -152,18 +152,13 @@
          )
 
          (case 4 then
-            (bind ?action save)
-            (bind $?params (create$ cloth))
-         )
-
-         (case 5 then
             (bind ?action say)
             (bind $?params (create$ acknowledge_cloth))
          )
 
-         (case 6 then
+         (case 5 then
             (bind ?action take)
-            (bind $?params (create$ left_cloth))
+            (bind $?params (create$ cloth))
          )
 
          ;; -------------------------------------------------
@@ -187,7 +182,7 @@
 
          (case 10 then
             (bind ?action drop)
-            (bind $?params (create$ left_table))
+            (bind $?params (create$ cloth))
          )
 
          (default
