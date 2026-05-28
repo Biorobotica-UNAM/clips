@@ -96,10 +96,7 @@
 
       (switch ?p
 
-         (case 1 then
-            (bind ?action say)
-            (bind $?params (create$ start_restaurant))
-         )
+         (case 1 then (bind ?action say) (bind $?params (create$ start_restaurant)))
 
          (default
             (bind ?next-phase done))
@@ -114,16 +111,8 @@
 
       (switch ?p
 
-         (case 1 then
-            (bind ?action say)
-            (bind $?params (create$ saving_initial_position))
-         )
-
-         (case 2 then
-            
-            (bind ?action saveloc)
-            (bind $?params (create$ restaurant_start))
-         )
+         (case 1 then (bind ?action say) (bind $?params (create$ saving_initial_position)))
+         (case 2 then (bind ?action saveloc) (bind $?params (create$ restaurant_start)))
 
          (default
             (bind ?next-phase done))
@@ -138,27 +127,10 @@
 
       (switch ?p
 
-         (case 1 then
-            (bind ?action say)
-            (bind $?params (create$ searching_customer))
-         )
-
-         (case 2 then
-            ;; Busca persona waving
-            (bind ?action find_waving)
-            (bind $?params (create$ person_waving))
-         )
-
-         (case 3 then
-            
-            (bind ?action saveloc)
-            (bind $?params (create$ customer))
-         )
-
-         (case 4 then
-            (bind ?action focus)
-            (bind $?params (create$ person))
-         )
+         (case 1 then (bind ?action say) (bind $?params (create$ searching_customer)))
+         (case 2 then (bind ?action find_waving) (bind $?params (create$ person_waving)))
+         (case 3 then (bind ?action saveloc) (bind $?params (create$ customer)))
+         (case 4 then (bind ?action focus) (bind $?params (create$ person)))
 
          (default
             (bind ?next-phase done))
@@ -173,30 +145,16 @@
 
       (switch ?p
 
-         (case 1 then
-            (bind ?action say)
-            (bind $?params (create$ navigating_customer))
-         )
-
-         (case 2 then (bind ?action unfocus) 
-         (bind $?params (create$ person)))
-         
-         (case 3 then
-            ;; Navega al tf detectado
-            (bind ?action goto)
-            (bind $?params (create$ customer))
-         )
-
-         (case 4 then
-            (bind ?action say)
-            (bind $?params (create$ arrived_customer))
-         )
+         (case 1 then (bind ?action say) (bind $?params (create$ navigating_customer)))
+         (case 2 then (bind ?action unfocus) (bind $?params (create$ person)))
+         (case 3 then (bind ?action goto) (bind $?params (create$ customer)))
+         (case 4 then (bind ?action say) (bind $?params (create$ arrived_customer)))
 
          (default
             (bind ?next-phase done))
       )
    )
-;; TODO: Run unfocus
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TAKE_ORDER
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -205,32 +163,13 @@
 
       (switch ?p
 
-         (case 1 then
-            (bind ?action say)
-            (bind $?params (create$ introduce_waitress))
-         )
-
-         (case 2 then
-            ;; Escucha orden
-            (bind ?action listen)
-            (bind $?params (create$ drink))
-         );restaurant_order
-
-         (case 3 then
-            ;; Guarda semantic result
-            (bind ?action save)
-            (bind $?params (create$ order_1))
-         )
-
-         (case 4 then
-            (bind ?action say)
-            (bind $?params (create$ confirm_order_1))
-         )
-
-         ; (case 5 then
-         ;    (bind ?action unfocus)
-         ;    (bind $?params (create$ person))
-         ; )
+         (case 1 then (bind ?action say) (bind $?params (create$ introduce_waitress)))
+         (case 2 then (bind ?action find) (bind $?params (create$ person_anybody)))
+         (case 3 then (bind ?action focus) (bind $?params (create$ person)))
+         (case 4 then (bind ?action listen) (bind $?params (create$ drink)))
+         (case 5 then (bind ?action save) (bind $?params (create$ order_1)))
+         (case 6 then (bind ?action say) (bind $?params (create$ confirm_order_1)))
+         (case 7 then (bind ?action unfocus) (bind $?params (create$ person)))
 
          (default
             (bind ?next-phase done))
@@ -244,22 +183,9 @@
    (if (eq ?name RETURN_TO_START) then
 
       (switch ?p
-
-         (case 1 then
-            (bind ?action say)
-            (bind $?params (create$ returning_start))
-         )
-
-         (case 2 then
-            ;; Regresa a pose guardada
-            (bind ?action goto)
-            (bind $?params (create$ restaurant_start))
-         )
-
-         (case 3 then
-            (bind ?action say)
-            (bind $?params (create$ arrived_start))
-         )
+         (case 1 then (bind ?action say) (bind $?params (create$ announce_nav_kitchen_bar)))
+         (case 2 then (bind ?action goto) (bind $?params (create$ restaurant_start)))
+         (case 3 then (bind ?action say) (bind $?params (create$ announce_nav_end_kitchen_bar)))
 
          (default
             (bind ?next-phase done))
@@ -273,19 +199,11 @@
    (if (eq ?name REPORT_ORDER) then
 
       (switch ?p
-
-         (case 1 then
-            (bind ?action say)
-            (bind $?params (create$ reporting_order))
-         )
-
-         ;; Aquí puedes usar semantic parser
-         ;; para reconstruir frase completa
-
-         (case 2 then
-            (bind ?action say)
-            (bind $?params (create$ customer_order))
-         )
+         ;TODO: Make aligne 
+         (case 1 then (bind ?action focus) (bind $?params (create$ person)))
+         (case 2 then (bind ?action say) (bind $?params (create$ send_order_1)))
+         (case 3 then (bind ?action unfocus) (bind $?params (create$ person)))
+         ;TODO: Pik orders
 
          (default
             (bind ?next-phase done))
