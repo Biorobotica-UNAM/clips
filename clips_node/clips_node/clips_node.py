@@ -286,12 +286,8 @@ class ClipsNode(Node):
         Appends a final 'test_completed' step so the supervisor
         knows the plan has ended.
         """
-        steps = "\n".join(self._current_plan)
-        final_step = (
-            f"\nPaso {len(self._current_plan) + 1}: "
-            f"{self._ROBOT_NAME} say test_completed"
-        )
-        full_plan = steps + final_step
+        full_plan = "\n".join(self._current_plan)
+        
 
         msg = String()
         msg.data = full_plan
