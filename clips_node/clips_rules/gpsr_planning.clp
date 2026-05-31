@@ -104,6 +104,11 @@
   (slot room (type SYMBOL) (default unknown))
 )
 
+(deftemplate person-state
+  (slot name (type SYMBOL) (default unknown))
+  (slot room (type SYMBOL) (default unknown))
+)
+
 ;; status válidos: pending, waiting
 (deftemplate sub-task
   (slot id     (type INTEGER) (default 0))
@@ -337,7 +342,7 @@
   (assert (sub-task (id (+ ?base 2)) (type deliver)     (arg1 ?obj) (arg2 user)))
 )
 
-;; Destino unknown y objeto sin ubicación conocida → fallback follow user
+;; Destino unknown y objeto sin ubicación conocida → buscar directamente
 (defrule expand-atrans-unknown-dest-unknown-object
   (declare (salience 190))
   ?cd <- (cd-primitive (primitive atrans)
@@ -441,7 +446,7 @@
                        (content ?content&~unknown)
                        (recipient ?recip&~unknown)
                        (location unknown))
-  (object-state (name ?recip) (room ?recip-room&~unknown))
+  (person-state (name ?recip) (room ?recip-room&~unknown))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
@@ -457,7 +462,7 @@
                        (content ?content&~unknown)
                        (recipient ?recip)
                        (location unknown))
-  (not (object-state (name ?recip)))
+  (not (person-state (name ?recip)))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
@@ -506,7 +511,7 @@
                        (step ?step)
                        (person_name     ?pname&~unknown)
                        (location unknown))
-  (object-state (name ?pname) (room ?person-room&~unknown))
+  (person-state (name ?pname) (room ?person-room&~unknown))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
@@ -616,14 +621,10 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 6))))
-  (assert (action-step (step ?say-step)        (action say)    (arg "I could not determine the destination, may I follow you?")))
-  (assert (action-step (step ?act-step)        (action find)   (arg "user")))
-  (assert (action-step (step (+ ?act-step 1)) (action say)    (arg "Following you to the destination")))
-  (assert (action-step (step (+ ?act-step 2)) (action follow) (arg "user")))
-  (assert (action-step (step (+ ?act-step 3)) (action listen) (arg "stop_following")))
-  (assert (action-step (step (+ ?act-step 4)) (action save)   (arg "known_location")))
-  (assert (action-step (step (+ ?act-step 5)) (action say)    (arg "Location saved")))
+  (assert (act-counter (value (+ ?act-step 2))))
+  (assert (action-step (step ?say-step)        (action say)   (arg "Navigating to destination")))
+  (assert (action-step (step ?act-step)        (action go_to) (arg "unknown")))
+  (assert (action-step (step (+ ?act-step 1)) (action say)   (arg "I have arrived")))
 )
 
 (defrule resolve-navigate-to-already-there
@@ -637,46 +638,43 @@
 )
 
 ;; ── acquire ──────────────────────────────────────────────
+;;
+;; El world-state es la fuente de verdad. Si el objeto tiene ubicación
+;; conocida, navegar si es necesario y tomar. Si no hay object-state,
+;; buscar directamente donde esté el robot.
 
-(defrule resolve-acquire-in-same-room
+(defrule resolve-acquire
   (declare (salience 100))
   ?st <- (sub-task (id ?id) (type acquire) (arg1 ?obj) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
   ?rs <- (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh) (holding ?held))
-  (object-state (name ?obj) (room ?robot-room))
+  (object-state (name ?obj) (room ?obj-room))
   ?sc <- (say-counter (value ?say-step))
   ?ac <- (act-counter (value ?act-step))
   =>
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
-  (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 4))))
-  (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will pick up " ?obj))))
-  (assert (action-step (step ?act-step)        (action find)  (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 1)) (action align) (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 2)) (action take)  (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 3)) (action say)   (arg (str-cat "I have picked up " ?obj))))
-  (assert (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh) (holding ?obj)))
-)
-
-(defrule resolve-acquire-navigate-first
-  (declare (salience 100))
-  ?st <- (sub-task (id ?id) (type acquire) (arg1 ?obj) (status pending))
-  (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  (robot-state (room ?robot-room))
-  (object-state (name ?obj) (room ?obj-room&~?robot-room))
-  =>
-  (modify ?st (status waiting))
-  (assert (sub-task (id (- ?id 1)) (type navigate-to) (arg1 ?obj-room)))
-)
-
-(defrule resolve-acquire-restore-waiting
-  (declare (salience 105))
-  ?st <- (sub-task (id ?id) (type acquire) (arg1 ?obj) (status waiting))
-  (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  (robot-state (room ?robot-room))
-  (object-state (name ?obj) (room ?robot-room))
-  =>
-  (modify ?st (status pending))
+  (if (eq ?robot-room ?obj-room)
+    then
+      (assert (say-counter (value (+ ?say-step 1))))
+      (assert (act-counter (value (+ ?act-step 4))))
+      (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will pick up " ?obj))))
+      (assert (action-step (step ?act-step)        (action find)  (arg (str-cat ?obj))))
+      (assert (action-step (step (+ ?act-step 1)) (action align) (arg (str-cat ?obj))))
+      (assert (action-step (step (+ ?act-step 2)) (action take)  (arg (str-cat ?obj))))
+      (assert (action-step (step (+ ?act-step 3)) (action say)   (arg (str-cat "I have picked up " ?obj))))
+      (assert (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh) (holding ?obj)))
+    else
+      (assert (say-counter (value (+ ?say-step 1))))
+      (assert (act-counter (value (+ ?act-step 6))))
+      (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will go to " ?obj-room " to pick up " ?obj))))
+      (assert (action-step (step ?act-step)        (action go_to) (arg (str-cat ?obj-room))))
+      (assert (action-step (step (+ ?act-step 1)) (action say)   (arg (str-cat "I have arrived at " ?obj-room))))
+      (assert (action-step (step (+ ?act-step 2)) (action find)  (arg (str-cat ?obj))))
+      (assert (action-step (step (+ ?act-step 3)) (action align) (arg (str-cat ?obj))))
+      (assert (action-step (step (+ ?act-step 4)) (action take)  (arg (str-cat ?obj))))
+      (assert (action-step (step (+ ?act-step 5)) (action say)   (arg (str-cat "I have picked up " ?obj))))
+      (assert (robot-state (name ?rname) (room ?obj-room) (left_hand ?lh) (right_hand ?rh) (holding ?obj)))
+  )
 )
 
 (defrule resolve-acquire-unknown-location
@@ -689,18 +687,13 @@
   ?ac <- (act-counter (value ?act-step))
   =>
   (retract ?st) (retract ?sc) (retract ?ac) (retract ?rs)
-  (assert (say-counter (value (+ ?say-step 2))))
-  (assert (act-counter (value (+ ?act-step 8))))
-  (assert (action-step (step ?say-step)        (action say)    (arg (str-cat "I do not know where " ?obj " is"))))
-  (assert (action-step (step (+ ?say-step 1)) (action say)    (arg (str-cat "May I follow you to " ?obj "?"))))
-  (assert (action-step (step ?act-step)        (action find)   (arg "user")))
-  (assert (action-step (step (+ ?act-step 1)) (action follow) (arg "user")))
-  (assert (action-step (step (+ ?act-step 2)) (action listen) (arg "stop_following")))
-  (assert (action-step (step (+ ?act-step 3)) (action save)   (arg (str-cat "location: " ?obj))))
-  (assert (action-step (step (+ ?act-step 4)) (action find)   (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 5)) (action align)  (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 6)) (action take)   (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 7)) (action say)    (arg (str-cat "I have picked up " ?obj))))
+  (assert (say-counter (value (+ ?say-step 1))))
+  (assert (act-counter (value (+ ?act-step 4))))
+  (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will search for " ?obj))))
+  (assert (action-step (step ?act-step)        (action find)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 1)) (action align) (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 2)) (action take)  (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 3)) (action say)   (arg (str-cat "I have picked up " ?obj))))
   (assert (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh) (holding ?obj)))
 )
 
