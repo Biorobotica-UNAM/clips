@@ -35,9 +35,6 @@ private:
   std::vector<std::string> json_to_facts(const std::string &json_str);
   std::vector<std::string> build_robot_fact(const nlohmann::json &robot);
   std::vector<std::string> build_object_facts(const nlohmann::json &objects);
-  std::vector<std::string>
-  build_location_facts(const nlohmann::json &locations_json);
-  std::vector<std::string>
-  build_people_facts(const nlohmann::json &people_json);
+  std::vector<std::string> build_people_facts(const nlohmann::json &people);
   std::string sym(const nlohmann::json &value);
 };
