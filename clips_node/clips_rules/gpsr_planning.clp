@@ -753,7 +753,7 @@
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will look for " ?desc))))
-  (assert (action-step (step ?act-step)        (action find) (arg (str-cat ?desc))))
+  (assert (action-step (step ?act-step)        (action find_person) (arg (str-cat ?desc))))
   (assert (action-step (step (+ ?act-step 1)) (action focus) (arg (str-cat ?desc))))
 )
 
