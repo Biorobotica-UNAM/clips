@@ -60,17 +60,13 @@
             TAKE_ORDER
             RETURN_TO_START
             REPORT_ORDER
-            FINISH_RESTAURANT)))
+            FINISH_RESTAURANT
+         )
+      )
+   )
 
-   (assert
-      (plan-note
-         (robot Justina)
-         (state START_RESTAURANT)))
-
-   (assert
-      (state
-         (name START_RESTAURANT)
-         (phase 1)))
+   (assert (plan-note (robot Justina) (state START_RESTAURANT)))
+   (assert (state (name START_RESTAURANT) (phase 1)))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -93,13 +89,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
    (if (eq ?name START_RESTAURANT) then
-
       (switch ?p
 
          (case 1 then (bind ?action say) (bind $?params (create$ start_restaurant)))
-
-         (default
-            (bind ?next-phase done))
+         
+         (default (bind ?next-phase done))
       )
    )
 
@@ -110,12 +104,11 @@
    (if (eq ?name SAVE_INITIAL_POSITION) then
 
       (switch ?p
-
+         ;(case 1 then (bind ?action say) (bind $?params (create$ going_to_entrance)))
          (case 1 then (bind ?action say) (bind $?params (create$ saving_initial_position)))
          (case 2 then (bind ?action saveloc) (bind $?params (create$ restaurant_start)))
 
-         (default
-            (bind ?next-phase done))
+         (default (bind ?next-phase done))
       )
    )
 
@@ -127,13 +120,11 @@
 
       (switch ?p
 
-         (case 1 then (bind ?action say) (bind $?params (create$ searching_customer)))
-         (case 2 then (bind ?action find_waving) (bind $?params (create$ person_waving)))
+         (case 1 then (bind ?action say) (bind $?params (create$ looking_for_customers)))
+         (case 2 then (bind ?action find_pose) (bind $?params (create$ waving)))
          (case 3 then (bind ?action saveloc) (bind $?params (create$ customer)))
-         (case 4 then (bind ?action focus) (bind $?params (create$ person)))
-
-         (default
-            (bind ?next-phase done))
+         (case 4 then (bind ?action focus) (bind $?params (create$ enable)))
+         (default (bind ?next-phase done))
       )
    )
 
@@ -146,8 +137,8 @@
       (switch ?p
 
          (case 1 then (bind ?action say) (bind $?params (create$ navigating_customer)))
-         (case 2 then (bind ?action unfocus) (bind $?params (create$ person)))
-         (case 3 then (bind ?action goto) (bind $?params (create$ customer)))
+         (case 2 then (bind ?action focus) (bind $?params (create$ disable)))
+         (case 3 then (bind ?action go_to) (bind $?params (create$ customer)))
          (case 4 then (bind ?action say) (bind $?params (create$ arrived_customer)))
 
          (default
@@ -164,12 +155,12 @@
       (switch ?p
 
          (case 1 then (bind ?action say) (bind $?params (create$ introduce_waitress)))
-         (case 2 then (bind ?action find) (bind $?params (create$ person_anybody)))
-         (case 3 then (bind ?action focus) (bind $?params (create$ person)))
+         (case 2 then (bind ?action find_person) (bind $?params (create$ anybody)))
+         (case 3 then (bind ?action focus) (bind $?params (create$ enable)))
          (case 4 then (bind ?action listen) (bind $?params (create$ drink)))
          (case 5 then (bind ?action save) (bind $?params (create$ order_1)))
          (case 6 then (bind ?action say) (bind $?params (create$ confirm_order_1)))
-         (case 7 then (bind ?action unfocus) (bind $?params (create$ person)))
+         (case 7 then (bind ?action focus) (bind $?params (create$ disable)))
 
          (default
             (bind ?next-phase done))
@@ -184,7 +175,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ announce_nav_kitchen_bar)))
-         (case 2 then (bind ?action goto) (bind $?params (create$ restaurant_start)))
+         (case 2 then (bind ?action go_to) (bind $?params (create$ restaurant_start)))
          (case 3 then (bind ?action say) (bind $?params (create$ announce_nav_end_kitchen_bar)))
 
          (default
