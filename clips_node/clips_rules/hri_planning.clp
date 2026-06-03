@@ -179,7 +179,7 @@
          (case 3 then (bind ?action find_person) (bind $?params (create$ host)))
          ;(case 9 then (bind ?action approach) (bind $?params (create$ person_host)))
          (case 4 then (bind ?action say) (bind $?params (create$ inform_present)))
-         ;(case 11 then (bind ?action say) (bind $?params (create$ instruct_follow_person)))
+         (case 5 then (bind ?action say) (bind $?params (create$ instruct_follow_person)))
          ;(case 12 then (bind ?action listen) (bind $?params (create$ follow)))
          ;(case 13 then (bind ?action follow) (bind $?params (create$ enable)))
          ;(case 14 then (bind ?action listen) (bind $?params (create$ follow)))
