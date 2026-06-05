@@ -215,7 +215,7 @@
   (assert (say-counter (value 1)))
   (assert (act-counter (value 1003)))
   (assert (action-step (step 1001) (action say)         (arg "Please stay still, I want to remember your face")))
-  (assert (action-step (step 1002) (action find_person) (arg "anybody")))
+  (assert (action-step (step 1002) (action find_person) (arg (str-cat "anybody"))))
   (assert (plan-note (robot ROBOT) (state GPSR_START)))
 )
 
@@ -755,7 +755,7 @@
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will look for " ?desc))))
-  (assert (action-step (step ?act-step)        (action find_person) (arg (str-cat ?desc))))
+  (assert (action-step (step ?act-step)        (action find_person) (arg (str-cat ?desc "_1"))))
   (assert (action-step (step (+ ?act-step 1)) (action focus) (arg (str-cat ?desc))))
 )
 
