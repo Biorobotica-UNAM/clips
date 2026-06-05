@@ -213,7 +213,9 @@
   =>
   (retract ?s)
   (assert (say-counter (value 1)))
-  (assert (act-counter (value 1001)))
+  (assert (act-counter (value 1003)))
+  (assert (action-step (step 1001) (action say)         (arg "Please stay still, I want to remember your face")))
+  (assert (action-step (step 1002) (action find_person) (arg "anybody")))
   (assert (plan-note (robot ROBOT) (state GPSR_START)))
 )
 
@@ -865,7 +867,7 @@
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 1))))
-  (assert (action-step (step ?say-step) (action say) (arg "I will now communicate the requested information")))
+  (assert (action-step (step ?say-step) (action say) (arg "I will communicate the requested information")))
   (assert (action-step (step ?act-step) (action say) (arg (str-cat ?content))))
 )
 
