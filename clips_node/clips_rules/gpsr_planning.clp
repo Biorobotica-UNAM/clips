@@ -988,7 +988,7 @@
   =>
   (retract ?ac)
   (assert (act-counter (value (+ ?act-step 2))))
-  (assert (action-step (step ?act-step)        (action go_to) (arg "inspection_point")))
+  (assert (action-step (step ?act-step)        (action go_to) (arg "instruction_point")))
   (assert (action-step (step (+ ?act-step 1)) (action say)  (arg "task completed")))
   (assert (final-steps-added))
 )
