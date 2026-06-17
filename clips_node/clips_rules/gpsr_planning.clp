@@ -320,11 +320,21 @@
                        (step ?step)
                        (object ?obj)
                        (destination ?dest&~unknown))
+  (robot-state (holding ?held))
   =>
   (retract ?cd)
   (bind ?base (* ?step 100))
-  (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?dest)))
-  (assert (sub-task (id (+ ?base 1)) (type deliver)     (arg1 ?obj) (arg2 ?dest)))
+  (if (eq ?held ?obj)
+    then
+      ;; ya lo tiene en mano (vino de un GRASP previo en el mismo plan)
+      (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?dest)))
+      (assert (sub-task (id (+ ?base 1)) (type deliver)     (arg1 ?obj) (arg2 ?dest)))
+    else
+      ;; caso normal "bring X to Y" — hay que ir a buscarlo primero
+      (assert (sub-task (id ?base)        (type acquire)     (arg1 ?obj)))
+      (assert (sub-task (id (+ ?base 1)) (type navigate-to) (arg1 ?dest)))
+      (assert (sub-task (id (+ ?base 2)) (type deliver)     (arg1 ?obj) (arg2 ?dest)))
+  )
 )
 
 ;; Destino unknown pero objeto con ubicación conocida en world-state
@@ -570,7 +580,7 @@
   (declare (salience 110))
   ?st <- (sub-task (id ?id) (type navigate-to) (arg1 user) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  (object-state (name user) (room ?user-room))
+  (person-state (name user) (room ?user-room))
   ?rs <- (robot-state (name ?rname) (room ?current) (left_hand ?lh) (right_hand ?rh) (holding ?held))
   (test (neq ?current ?user-room))
   ?sc <- (say-counter (value ?say-step))
@@ -589,7 +599,7 @@
   (declare (salience 110))
   ?st <- (sub-task (id ?id) (type navigate-to) (arg1 user) (status pending))
   (not (sub-task (id ?id2&:(< ?id2 ?id)) (status pending)))
-  (object-state (name user) (room ?user-room))
+  (person-state (name user) (room ?user-room))
   (robot-state (room ?user-room))
   =>
   (retract ?st)
@@ -661,8 +671,8 @@
       (assert (act-counter (value (+ ?act-step 4))))
       (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will pick up " ?obj))))
       (assert (action-step (step ?act-step)        (action align)  (arg (str-cat ?obj))))
-      (assert (action-step (step (+ ?act-step 1))  (action find_object) (arg (str-cat ?obj))))
-      (assert (action-step (step (+ ?act-step 2))  (action take)  (arg (str-cat ?obj))))
+      (assert (action-step (step (+ ?act-step 1))  (action find_object) (arg (str-cat ?obj "_1"))))
+      (assert (action-step (step (+ ?act-step 2))  (action take)  (arg (str-cat ?obj "_1"))))
       (assert (action-step (step (+ ?act-step 3))  (action say)   (arg (str-cat "I have picked up " ?obj))))
       (assert (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh) (holding ?obj)))
     else
