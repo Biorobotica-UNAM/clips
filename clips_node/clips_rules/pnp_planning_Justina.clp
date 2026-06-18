@@ -122,6 +122,7 @@
          (case 15 then (bind ?action say)   (bind $?params (create$ request_open_dishwasher_door)))
          (case 16 then (bind ?action check) (bind $?params (create$ dishwasher_door)))
          (case 17 then (bind ?action align) (bind $?params (create$ dishwasher)))
+         (case 18 then (bind ?action find_space)  (bind $?params (create$ container)))
          (case 18 then (bind ?action drop)  (bind $?params (create$ tableware_1)))
          (case 19 then (bind ?action drop)  (bind $?params (create$ tableware_2)))
 
@@ -152,6 +153,7 @@
          (case 14 then (bind ?action say)   (bind $?params (create$ request_open_dishwasher_door)))
          (case 15 then (bind ?action check) (bind $?params (create$ dishwasher_door)))
          (case 16 then (bind ?action align) (bind $?params (create$ dishwasher)))
+         (case 18 then (bind ?action find_space)  (bind $?params (create$ container)))
          (case 17 then (bind ?action drop)  (bind $?params (create$ cutlery_1)))
 
          (default
@@ -179,6 +181,7 @@
          (case 12 then (bind ?action go_to)  (bind $?params (create$ trash_bin)))
          (case 13 then (bind ?action say)   (bind $?params (create$ reached_trash_bin)))
          (case 14 then (bind ?action align) (bind $?params (create$ trash_bin)))
+         (case 18 then (bind ?action find_space)  (bind $?params (create$ container)))
          (case 15 then (bind ?action drop)  (bind $?params (create$ trash_1)))
          (default
             (bind ?next-phase done))
@@ -209,6 +212,7 @@
          (case 16 then (bind ?action go_to)  (bind $?params (create$ cabinet)))
          (case 17 then (bind ?action say)   (bind $?params (create$ reached_cabinet)))
          (case 18 then (bind ?action align) (bind $?params (create$ cabinet)))
+         (case 18 then (bind ?action find_space)  (bind $?params (create$ shelf)))
          (case 19 then (bind ?action drop)  (bind $?params (create$ grocery_1)))
          (case 20 then (bind ?action drop)  (bind $?params (create$ grocery_2)))
 
@@ -238,6 +242,7 @@
          (case 13 then (bind ?action go_to)  (bind $?params (create$ kitchen_table)))
          (case 14  then (bind ?action say)   (bind $?params (create$ reached_kitchen_table)))
          (case 15 then (bind ?action align) (bind $?params (create$ table)))
+         (case 18 then (bind ?action find_space)  (bind $?params (create$ table)))
          (case 16 then (bind ?action drop)  (bind $?params (create$ milk)))
          (case 17 then (bind ?action drop)  (bind $?params (create$ cereal)))
          (case 18 then (bind ?action say)   (bind $?params (create$ going_to_breakfast_bar)))
@@ -257,6 +262,7 @@
          (case 32 then (bind ?action go_to)  (bind $?params (create$ kitchen_table)))
          (case 33 then (bind ?action say)   (bind $?params (create$ reached_kitchen_table)))
          (case 34 then (bind ?action align) (bind $?params (create$ table)))
+         (case 18 then (bind ?action find_space)  (bind $?params (create$ table)))
          (case 35 then (bind ?action drop)  (bind $?params (create$ bowl)))
          (case 36 then (bind ?action drop)  (bind $?params (create$ spoon)))
 
