@@ -109,11 +109,12 @@
 ;; SAVE_INITIAL_POSITION
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   (if (eq ?name SAVE_INITIAL_POSITION) then
+   (if (eq ?name SAVE_INITIAL_POSITION) then	
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ saving_initial_position)))
-         (case 2 then (bind ?action saveloc) (bind $?params (create$ restaurant_start)))
+         (case 2 then (bind ?action save_loc) (bind $?params (create$ initial_position)))
+         (case 3 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
 
          (default (bind ?next-phase done))
       )
@@ -128,10 +129,7 @@
       (switch ?p
 
          (case 1 then (bind ?action say) (bind $?params (create$ looking_for_customers)))
-         (case 2 then (bind ?action find_pose) (bind $?params (create$ waving)))
-         (case 3 then (bind ?action saveloc) (bind $?params (create$ customer)))
-         ;(case 4 then (bind ?action focus) (bind $?params (create$ enable))) 
-         ;TODO: Verify focus
+         (case 2 then (bind ?action find_pose) (bind $?params (create$ waving_1)))
          (default (bind ?next-phase done))
       )
    )
@@ -145,8 +143,7 @@
       (switch ?p
 
          (case 1 then (bind ?action say) (bind $?params (create$ announce_nav_customer_1)))
-         ;(case 2 then (bind ?action focus) (bind $?params (create$ disable)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ customer)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ customer_1)))
          (case 3 then (bind ?action say) (bind $?params (create$ announce_nav_end_customer_1)))
 
          (default
@@ -162,14 +159,13 @@
 
       (switch ?p
 
-         ;(case 1 then (bind ?action say) (bind $?params (create$ introduce_waitress)))
-         ;TODO: Fix find person
-         ;(case 2 then (bind ?action find_person) (bind $?params (create$ anybody)))
-         (case 1 then (bind ?action focus) (bind $?params (create$ enable)))
-         (case 2 then (bind ?action say) (bind $?params (create$ ask_order)))
-         (case 3 then (bind ?action listen) (bind $?params (create$ customer_order_1)))
-         (case 4 then (bind ?action say) (bind $?params (create$ confirm_order_1)))
-         (case 5 then (bind ?action focus) (bind $?params (create$ disable)))
+         (case 1 then (bind ?action say) (bind $?params (create$ introduce_waitress)))
+         (case 2 then (bind ?action find_person) (bind $?params (create$ anybody)))
+         (case 3 then (bind ?action focus) (bind $?params (create$ enable)))
+         (case 4 then (bind ?action say) (bind $?params (create$ ask_order)))
+         (case 5 then (bind ?action listen) (bind $?params (create$ customer_order_1)))
+         (case 6 then (bind ?action say) (bind $?params (create$ acknowledge_order_1)))
+         (case 7 then (bind ?action focus) (bind $?params (create$ disable)))
 
          (default
             (bind ?next-phase done))
@@ -184,7 +180,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ announce_nav_kitchen_bar)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ restaurant_start)))
+         (case 2 then (bind ?action go_to) (bind $?params (create$ kitchen_bar)))
          (case 3 then (bind ?action say) (bind $?params (create$ announce_nav_end_kitchen_bar)))
 
          (default
