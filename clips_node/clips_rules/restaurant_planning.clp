@@ -143,7 +143,7 @@
       (switch ?p
 
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ customer)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ customer)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_customer)))
 
          (default
@@ -179,7 +179,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_kitchen_bar)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ kitchen_bar)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ kitchen_bar)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_kitchen_bar)))
 
          (default
@@ -215,7 +215,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ customer)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ customer)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_customer)))
          (case 4 then (bind ?action focus) (bind $?params (create$ enable)))
          (case 5 then (bind ?action say) (bind $?params (create$ request_take_order_from_tray)))
@@ -236,7 +236,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_kitchen_bar)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ initial_position)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ initial_position)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_kitchen_bar)))
          (case 4 then (bind ?action say) (bind $?params (create$ search_customer_2)))
          (case 5 then (bind ?action find_pose) (bind $?params (create$ waving_2)))
@@ -254,7 +254,7 @@
       (switch ?p
 
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ customer_2)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ customer_2)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_customer)))
 
          (default
@@ -290,7 +290,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_kitchen_bar)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ kitchen_bar)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ kitchen_bar)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_kitchen_bar)))
 
          (default
@@ -327,7 +327,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ customer_2)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ customer_2)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_customer_2)))
          (case 4 then (bind ?action focus) (bind $?params (create$ enable)))
          (case 5 then (bind ?action say) (bind $?params (create$ request_take_order_from_tray)))
@@ -348,7 +348,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ announce_nav_initial_position)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ restaurant_start)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ restaurant_start)))
          (case 3 then (bind ?action say) (bind $?params (create$ announce_nav_end_initial_position)))
 
          (default
