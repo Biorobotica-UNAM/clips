@@ -126,7 +126,7 @@
 
       (switch ?p
 
-         (case 1 then (bind ?action say) (bind $?params (create$ looking_for_customers)))
+         (case 1 then (bind ?action say) (bind $?params (create$ search_customer_1)))
          (case 2 then (bind ?action find_pose) (bind $?params (create$ waving_1)))
          (default (bind ?next-phase done))
       )
@@ -157,12 +157,13 @@
 
       (switch ?p
 
-         (case 1 then (bind ?action find_person) (bind $?params (create$ anybody)))
-         (case 2 then (bind ?action focus) (bind $?params (create$ enable)))
-         (case 3 then (bind ?action say) (bind $?params (create$ ask_order)))
-         (case 4 then (bind ?action listen) (bind $?params (create$ customer_order_1)))
-         (case 5 then (bind ?action say) (bind $?params (create$ acknowledge_order_1)))
-         (case 6 then (bind ?action focus) (bind $?params (create$ disable)))
+         (case 1 then (bind ?action save_loc) (bind $?params (create$ customer_1)))
+         (case 2 then (bind ?action find_person) (bind $?params (create$ anybody)))
+         (case 3 then (bind ?action focus) (bind $?params (create$ enable)))
+         (case 4 then (bind ?action say) (bind $?params (create$ ask_order)))
+         (case 5 then (bind ?action listen) (bind $?params (create$ customer_order_1)))
+         (case 6 then (bind ?action say) (bind $?params (create$ acknowledge_order_1)))
+         (case 7 then (bind ?action focus) (bind $?params (create$ disable)))
 
          (default
             (bind ?next-phase done))
@@ -214,7 +215,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
-         (case 2 then (bind ?action approach) (bind $?params (create$ customer)))
+         (case 2 then (bind ?action go_to) (bind $?params (create$ customer_1)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_customer)))
          (case 4 then (bind ?action focus) (bind $?params (create$ enable)))
          (case 5 then (bind ?action say) (bind $?params (create$ request_take_order_from_tray)))
@@ -239,7 +240,6 @@
          (case 3 then (bind ?action say) (bind $?params (create$ reached_kitchen_bar)))
          (case 4 then (bind ?action say) (bind $?params (create$ search_customer_2)))
          (case 5 then (bind ?action find_pose) (bind $?params (create$ waving_2)))
-         ;(case 6 then (bind ?action save_loc) (bind $?params (create$ customer)))
          (default (bind ?next-phase done))
       )
    )
@@ -269,12 +269,13 @@
 
       (switch ?p
 
-         (case 1 then (bind ?action find_person) (bind $?params (create$ anybody)))
-         (case 2 then (bind ?action focus) (bind $?params (create$ enable)))
-         (case 3 then (bind ?action say) (bind $?params (create$ ask_order)))
-         (case 4 then (bind ?action listen) (bind $?params (create$ customer_order_2)))
-         (case 5 then (bind ?action say) (bind $?params (create$ acknowledge_order_2)))
-         (case 6 then (bind ?action focus) (bind $?params (create$ disable)))
+         (case 1 then (bind ?action save_loc) (bind $?params (create$ custormer_2)))
+         (case 2 then (bind ?action find_person) (bind $?params (create$ anybody)))
+         (case 3 then (bind ?action focus) (bind $?params (create$ enable)))
+         (case 4 then (bind ?action say) (bind $?params (create$ ask_order)))
+         (case 5 then (bind ?action listen) (bind $?params (create$ customer_order_2)))
+         (case 6 then (bind ?action say) (bind $?params (create$ acknowledge_order_2)))
+         (case 7 then (bind ?action focus) (bind $?params (create$ disable)))
 
          (default
             (bind ?next-phase done))
@@ -311,7 +312,6 @@
          (case 5 then (bind ?action say) (bind $?params (create$ request_place_order_on_tray)))
          (case 6 then (bind ?action listen) (bind $?params (create$ continue)))
          (case 7 then (bind ?action focus) (bind $?params (create$ disable)))
-         ;TODO: Pik orders <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
          (default
             (bind ?next-phase done))
@@ -326,7 +326,7 @@
 
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
-         (case 2 then (bind ?action approach) (bind $?params (create$ customer_2)))
+         (case 2 then (bind ?action go_to) (bind $?params (create$ customer_2)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_customer_2)))
          (case 4 then (bind ?action focus) (bind $?params (create$ enable)))
          (case 5 then (bind ?action say) (bind $?params (create$ request_take_order_from_tray)))
