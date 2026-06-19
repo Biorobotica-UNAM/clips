@@ -50,9 +50,10 @@ class RuleLoader:
         Path("src") / "clips" / "clips_node" / "clips_rules",
     )
 
-    def __init__(self, engine: ClipsEngine, logger=None) -> None:
+    def __init__(self, engine: ClipsEngine, logger=None, plan_name: str = "default") -> None:
         self._engine = engine
         self._logger = logger
+        self._plan_name = plan_name
 
     def load(self) -> bool:
         """
@@ -61,28 +62,56 @@ class RuleLoader:
         Returns:
             True if rules were loaded successfully, False otherwise.
         """
-        dat_path = self._find_dat_file()
-        if dat_path is None:
-            self._log_error("rules_list.dat not found in any search path.")
+        rule_files = self._find_rule_files()
+        if not rule_files:
+            self._log_error(f"No se encontraron archivos .clp para el plan '{self._plan_name}'")
             return False
 
-        rule_files = self._parse_dat_file(dat_path)
+        # Ordenar para tener un orden predecible
+        rule_files.sort()
         for rule_file in rule_files:
             self._engine.load(str(rule_file))
             self._log_info(f"Loaded: {rule_file.name}")
 
         self._engine.reset()
-        self._log_info(f"Rules loaded from: {dat_path}")
+        self._log_info(f"Total {len(rule_files)} rule files loaded for plan '{self._plan_name}'.")
         return True
 
-    def _find_dat_file(self) -> Optional[Path]:
-        """Search for rules_list.dat across known workspace paths."""
+    def _find_rule_files(self) -> List[Path]:
         cwd = Path(os.getcwd())
+        matching_files = []
+
+        # Ejemplo:
+        # "PNP Justina" -> ["pnp", "justina"]
+        # "PNP Takeshi" -> ["pnp", "takeshi"]
+        tokens = self._plan_name.lower().split()
+
         for relative_path in self._SEARCH_PATHS:
-            candidate = cwd / relative_path / self._DAT_FILENAME
-            if candidate.exists():
-                return candidate
-        return None
+            search_dir = cwd / relative_path
+            if not search_dir.exists():
+                continue
+
+            # Si solo viene un argumento, conserva el comportamiento anterior:
+            # plan_name*.clp
+            if len(tokens) == 1:
+                pattern = f"{tokens[0]}*.clp"
+
+                for file_path in search_dir.glob(pattern):
+                    matching_files.append(file_path)
+
+                exact_file = search_dir / f"{tokens[0]}.clp"
+                if exact_file.exists() and exact_file not in matching_files:
+                    matching_files.append(exact_file)
+
+            # Si vienen dos o más argumentos, busca que todos estén en el nombre
+            else:
+                for file_path in search_dir.glob("*.clp"):
+                    file_name = file_path.name.lower()
+
+                    if all(token in file_name for token in tokens):
+                        matching_files.append(file_path)
+
+        return matching_files
 
     def _parse_dat_file(self, dat_path: Path) -> List[Path]:
         """
