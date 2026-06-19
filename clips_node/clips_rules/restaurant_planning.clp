@@ -127,8 +127,7 @@
       (switch ?p
 
          (case 1 then (bind ?action say) (bind $?params (create$ looking_for_customers)))
-         (case 2 then (bind ?action find_pose) (bind $?params (create$ waving)))
-         ;(case 3 then (bind ?action save_loc) (bind $?params (create$ customer)))
+         (case 2 then (bind ?action find_pose) (bind $?params (create$ waving_1)))
          (default (bind ?next-phase done))
       )
    )
@@ -142,7 +141,7 @@
       (switch ?p
 
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
-         (case 2 then (bind ?action approach) (bind $?params (create$ customer)))
+         (case 2 then (bind ?action approach) (bind $?params (create$ customer_1)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_customer)))
 
          (default
