@@ -270,7 +270,7 @@
 
       (switch ?p
 
-         (case 1 then (bind ?action save_loc) (bind $?params (create$ custormer_2)))
+         (case 1 then (bind ?action save_loc) (bind $?params (create$ customer_2)))
          (case 2 then (bind ?action find_person) (bind $?params (create$ anybody)))
          (case 3 then (bind ?action focus) (bind $?params (create$ enable)))
          (case 4 then (bind ?action say) (bind $?params (create$ ask_order)))
