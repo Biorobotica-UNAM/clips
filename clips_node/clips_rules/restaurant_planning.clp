@@ -217,10 +217,11 @@
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
          (case 2 then (bind ?action go_to) (bind $?params (create$ customer_1)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_customer)))
-         (case 4 then (bind ?action focus) (bind $?params (create$ enable)))
-         (case 5 then (bind ?action say) (bind $?params (create$ request_take_order_from_tray)))
-         (case 6 then (bind ?action listen) (bind $?params (create$ continue)))
-         (case 7 then (bind ?action focus) (bind $?params (create$ disable)))
+         (case 4 then (bind ?action find_person) (bind $?params (create$ guest_1)))
+         (case 5 then (bind ?action focus) (bind $?params (create$ enable)))
+         (case 6 then (bind ?action say) (bind $?params (create$ request_take_order_from_tray)))
+         (case 7 then (bind ?action listen) (bind $?params (create$ continue)))
+         (case 8 then (bind ?action focus) (bind $?params (create$ disable)))
 
          (default
             (bind ?next-phase done))
@@ -306,7 +307,7 @@
 
       (switch ?p
          (case 1 then (bind ?action align) (bind $?params (create$ table)))
-         (case 2 then (bind ?action find_person) (bind $?params (create$ anybody)))
+         (case 2 then (bind ?action find_person) (bind $?params (create$ guest_2)))
          (case 3 then (bind ?action focus) (bind $?params (create$ enable)))
          (case 4 then (bind ?action say) (bind $?params (create$ inform_order_2)))
          (case 5 then (bind ?action say) (bind $?params (create$ request_place_order_on_tray)))
@@ -328,10 +329,11 @@
          (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
          (case 2 then (bind ?action go_to) (bind $?params (create$ customer_2)))
          (case 3 then (bind ?action say) (bind $?params (create$ reached_customer_2)))
-         (case 4 then (bind ?action focus) (bind $?params (create$ enable)))
-         (case 5 then (bind ?action say) (bind $?params (create$ request_take_order_from_tray)))
-         (case 6 then (bind ?action listen) (bind $?params (create$ continue)))
-         (case 7 then (bind ?action focus) (bind $?params (create$ disable)))
+         (case 4 then (bind ?action find_person) (bind $?params (create$ guest_3)))
+         (case 5 then (bind ?action focus) (bind $?params (create$ enable)))
+         (case 6 then (bind ?action say) (bind $?params (create$ request_take_order_from_tray)))
+         (case 7 then (bind ?action listen) (bind $?params (create$ continue)))
+         (case 8 then (bind ?action focus) (bind $?params (create$ disable)))
 
 
          (default
