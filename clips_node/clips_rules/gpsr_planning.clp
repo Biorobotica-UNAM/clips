@@ -702,9 +702,9 @@
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 4))))
   (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will search for " ?obj))))
-  (assert (action-step (step ?act-step)        (action align)  (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 1))  (action find_object) (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 2))  (action take)  (arg (str-cat ?obj))))
+  (assert (action-step (step ?act-step)        (action align)  (arg (str-cat "table"))))
+  (assert (action-step (step (+ ?act-step 1))  (action find_object) (arg (str-cat ?obj "_1"))))
+  (assert (action-step (step (+ ?act-step 2))  (action take)  (arg (str-cat ?obj "_1"))))
   (assert (action-step (step (+ ?act-step 3))  (action say)   (arg (str-cat "I have picked up " ?obj))))
   (assert (robot-state (name ?rname) (room ?robot-room) (left_hand ?lh) (right_hand ?rh) (holding ?obj)))
 )
@@ -741,7 +741,7 @@
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will drop " ?obj " on " ?dest))))
-  (assert (action-step (step ?act-step)        (action drop) (arg (str-cat ?obj " " ?dest))))
+  (assert (action-step (step ?act-step)        (action drop) (arg (str-cat ?obj "_1" ?dest))))
   (assert (action-step (step (+ ?act-step 1)) (action say)   (arg (str-cat "I have placed " ?obj))))
 )
 
@@ -785,7 +785,7 @@
   (assert (act-counter (value (+ ?act-step 3))))
   (assert (action-step (step ?say-step)        (action say)  (arg (str-cat "I will search for " ?obj))))
   (assert (action-step (step ?act-step)        (action align) (arg (str-cat ?obj))))
-  (assert (action-step (step (+ ?act-step 1))  (action find_object) (arg (str-cat ?obj))))
+  (assert (action-step (step (+ ?act-step 1))  (action analyze_object) (arg (str-cat ?obj))))
   (assert (action-step (step (+ ?act-step 2))  (action say)  (arg (str-cat "Search complete"))))
 )
 
@@ -823,7 +823,7 @@
   (assert (say-counter (value (+ ?say-step 1))))
   (assert (act-counter (value (+ ?act-step 2))))
   (assert (action-step (step ?say-step) (action say)  (arg (str-cat "I will search for " ?obj))))
-  (assert (action-step (step ?act-step) (action find_object) (arg (str-cat ?obj))))
+  (assert (action-step (step ?act-step) (action analyze_object) (arg (str-cat ?obj))))
   (assert (action-step (step (+ ?act-step 1)) (action say)  (arg (str-cat "Search complete"))))
 )
 
@@ -893,11 +893,12 @@
   =>
   (retract ?st) (retract ?sc) (retract ?ac)
   (assert (say-counter (value (+ ?say-step 1))))
-  (assert (act-counter (value (+ ?act-step 3))))
+  (assert (act-counter (value (+ ?act-step 4))))
   (assert (action-step (step ?say-step)        (action say)   (arg (str-cat "I will greet " ?person))))
-  (assert (action-step (step ?act-step)        (action find_person)  (arg (str-cat ?person))))
-  (assert (action-step (step (+ ?act-step 1)) (action focus) (arg (str-cat ?person))))
-  (assert (action-step (step (+ ?act-step 2)) (action say)   (arg "greet")))
+  (assert (action-step (step ?act-step)        (action analyze_person)  (arg (str-cat ?person "_1"))))
+  (assert (action-step (step (+ ?act-step 1)) (action approach) (arg (str-cat ?person "_1"))))
+  (assert (action-step (step (+ ?act-step 2)) (action focus) (arg (str-cat "True"))))
+  (assert (action-step (step (+ ?act-step 3)) (action say)   (arg "greet")))
 )
 
 ;; ── wait-for ─────────────────────────────────────────────
