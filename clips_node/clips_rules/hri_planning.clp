@@ -174,12 +174,13 @@
    (if (eq ?name RECEIVE_BAG) then
       (switch ?p
          (case 1 then (bind ?action approach) (bind $?params (create$ guest_2)))
-         (case 1 then (bind ?action receive) (bind $?params (create$ gift)))
-         (case 2 then (bind ?action say) (bind $?params (create$ search_host)))
-         (case 3 then (bind ?action find_person) (bind $?params (create$ host_1)))
-         (case 9 then (bind ?action approach) (bind $?params (create$ host_1)))
-         (case 4 then (bind ?action say) (bind $?params (create$ inform_present)))
-         (case 5 then (bind ?action say) (bind $?params (create$ instruct_follow_person)))
+         (case 2 then (bind ?action receive) (bind $?params (create$ gift)))
+         (case 3 then (bind ?action go_to) (bind $?params (create$ living_room)))
+         (case 4 then (bind ?action say) (bind $?params (create$ search_host)))
+         (case 5 then (bind ?action find_person) (bind $?params (create$ host_1)))
+         (case 6 then (bind ?action approach) (bind $?params (create$ host_1)))
+         (case 7 then (bind ?action say) (bind $?params (create$ inform_present)))
+         (case 8 then (bind ?action say) (bind $?params (create$ instruct_follow_person)))
 
          (default (bind ?next-phase done))
       )
