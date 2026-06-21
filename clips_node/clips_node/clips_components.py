@@ -15,6 +15,7 @@ BioRobotics Laboratory, Facultad de Ingenieria, UNAM
 """
 
 import os
+import re
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -81,10 +82,10 @@ class RuleLoader:
         cwd = Path(os.getcwd())
         matching_files = []
 
-        # Ejemplo:
-        # "PNP Justina" -> ["pnp", "justina"]
-        # "PNP Takeshi" -> ["pnp", "takeshi"]
-        tokens = self._plan_name.lower().split()
+        # Soporta:
+        # "PNP Justina"  -> ["pnp", "justina"]
+        # "PNP_Justina" -> ["pnp", "justina"]
+        tokens = re.split(r"[\s_]+", self._plan_name.lower().strip())
 
         for relative_path in self._SEARCH_PATHS:
             search_dir = cwd / relative_path
