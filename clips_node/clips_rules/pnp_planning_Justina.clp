@@ -115,7 +115,7 @@
          (case 10 then (bind ?action say)   (bind $?params (create$ request_open_dishwasher_door)))
          (case 11 then (bind ?action check) (bind $?params (create$ dishwasher_door)))
          (case 12 then (bind ?action align) (bind $?params (create$ dishwasher)))
-         (case 13 then (bind ?action find_space)  (bind $?params (create$ container)))
+         (case 13 then (bind ?action find_space)  (bind $?params (create$ container_top)))
          (case 14 then (bind ?action drop)  (bind $?params (create$ tableware_1)))
          (case 15 then (bind ?action drop)  (bind $?params (create$ tableware_2)))
 
@@ -140,7 +140,7 @@
          (case 8  then (bind ?action say)   (bind $?params (create$ request_open_dishwasher_door)))
          (case 9  then (bind ?action check) (bind $?params (create$ dishwasher_door)))
          (case 10 then (bind ?action align) (bind $?params (create$ dishwasher)))
-         (case 11 then (bind ?action find_space)  (bind $?params (create$ container)))
+         (case 11 then (bind ?action find_space)  (bind $?params (create$ container_top)))
          (case 12 then (bind ?action drop)  (bind $?params (create$ cutlery_1)))
 
          (default
@@ -162,7 +162,7 @@
          (case 6  then (bind ?action take)  (bind $?params (create$ trash_1)))
          (case 7  then (bind ?action go_to)  (bind $?params (create$ trash_bin)))
          (case 8  then (bind ?action align) (bind $?params (create$ trash_bin)))
-         (case 9  then (bind ?action find_space)  (bind $?params (create$ container)))
+         (case 9  then (bind ?action find_space)  (bind $?params (create$ container_down)))
          (case 10 then (bind ?action drop)  (bind $?params (create$ trash_1)))
          (default
             (bind ?next-phase done))
