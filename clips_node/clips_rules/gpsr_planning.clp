@@ -20,6 +20,47 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  gpsr_templates.clp
+;;
+;;  Templates compartidos por el sistema de planificacion GPSR.
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Disparador de planificacion — insertado por clips_node.
+(deftemplate start (slot name))
+
+;; Control de ejecucion paso a paso.
+(deftemplate plan-control
+  (slot step (type INTEGER) (default 1))
+)
+
+;; Mensaje hacia el supervisor — una accion del plan.
+(deftemplate ros-message
+  (slot step   (type INTEGER) (default 0))
+  (slot robot  (type SYMBOL)  (default ROBOT))
+  (slot action (type SYMBOL)  (default unknown))
+  (multislot params)
+)
+
+;; Anotacion del estado del plan — usada por clips_node
+;; para detectar inicio y fin de planificacion.
+(deftemplate plan-note
+  (slot robot (type SYMBOL) (default ROBOT))
+  (slot state (type SYMBOL) (default unknown))
+)
+
+;; Resultado de una busqueda — generado por el executor
+;; cuando una accion find retorna.
+;;   status: found | not-found
+(deftemplate search-result
+  (slot target (type SYMBOL)  (default unknown))
+  (slot room   (type SYMBOL)  (default unknown))
+  (slot status (type SYMBOL)  (default not-found))
+)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SECCION 1 — TEMPLATES LOCALES
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -198,6 +239,44 @@
     (return ?desc))
 
   (return "user")
+)
+
+;;
+;; classify-mtrans-content: el contenido de un MTRANS que viene
+;; de una consulta de percepcion (ATTEND con query_attribute o
+;; query_filter) no es la respuesta real -- es solo el nombre
+;; simbolico que el nodo C++ le dio al resultado (ej. "biggest_snack",
+;; "count_people_yellow_coats"). La respuesta real solo se conoce
+;; en tiempo de ejecucion, asi que en vez de decir ese placeholder
+;; tal cual, el "say" debe usar un argumento generico que el
+;; ejecutor sepa resolver:
+;;
+;;   contiene "biggest"  → "biggest_category"
+;;   contiene "smallest" → "smallest_category"
+;;   contiene "count"    → "count_category"
+;;   ningun caso anterior → se dice el contenido tal cual
+;;
+;; Ejemplos:
+;;   biggest_snack              → "biggest_category"
+;;   smallest_object            → "smallest_category"
+;;   count_people_yellow_coats  → "count_category"
+;;   the day of the week        → "the day of the week"   (sin cambio)
+;;
+(deffunction classify-mtrans-content
+  (?content)
+
+  (bind ?str (lowcase (str-cat ?content)))
+
+  (if (neq (str-index "biggest" ?str) FALSE) then
+    (return biggest_category))
+
+  (if (neq (str-index "smallest" ?str) FALSE) then
+    (return smallest_category))
+
+  (if (neq (str-index "count" ?str) FALSE) then
+    (return count_category))
+
+  (return ?content)
 )
 
 
@@ -448,7 +527,7 @@
   (bind ?base (* ?step 100))
   (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?loc)))
   (assert (sub-task (id (+ ?base 1)) (type find-person)  (arg1 ?recip) (arg2 ?loc) (arg3 ?recip)))
-  (assert (sub-task (id (+ ?base 2)) (type communicate)  (arg1 ?content)))
+  (assert (sub-task (id (+ ?base 2)) (type communicate)  (arg1 (classify-mtrans-content ?content))))
 )
 
 (defrule expand-mtrans-recipient-known-world
@@ -464,7 +543,7 @@
   (bind ?base (* ?step 100))
   (assert (sub-task (id ?base)        (type navigate-to) (arg1 ?recip-room)))
   (assert (sub-task (id (+ ?base 1)) (type find-person)  (arg1 ?recip) (arg2 ?recip-room) (arg3 ?recip)))
-  (assert (sub-task (id (+ ?base 2)) (type communicate)  (arg1 ?content)))
+  (assert (sub-task (id (+ ?base 2)) (type communicate)  (arg1 (classify-mtrans-content ?content))))
 )
 
 (defrule expand-mtrans-recipient-unknown
@@ -479,7 +558,7 @@
   (retract ?cd)
   (bind ?base (* ?step 100))
   (assert (sub-task (id ?base)        (type find-person)  (arg1 ?recip) (arg2 unknown) (arg3 ?recip)))
-  (assert (sub-task (id (+ ?base 1)) (type communicate)   (arg1 ?content)))
+  (assert (sub-task (id (+ ?base 1)) (type communicate)   (arg1 (classify-mtrans-content ?content))))
 )
 
 ;; ── speak ────────────────────────────────────────────────
