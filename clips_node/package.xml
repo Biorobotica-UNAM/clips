@@ -11,6 +11,7 @@
   <exec_depend>rclpy</exec_depend>
   <exec_depend>clipspy</exec_depend>
   <depend>clips_interfaces</depend>
+  <depend>std_srvs</depend>
 
   <export>
     <build_type>ament_python</build_type>
