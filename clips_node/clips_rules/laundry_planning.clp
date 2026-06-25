@@ -50,6 +50,7 @@
             START_LAUNDRY
             NAVIGATE_TO_LAUNDRY
             RETRIEVE_CLOTHES
+            FOLD_CLOTHES
             FINISH_LAUNDRY
          )
       )
@@ -194,6 +195,16 @@
             (bind ?next-phase done)
          )
       )
+   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; FOLD_CLOTHES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (and (eq ?name FOLD_CLOTHES) (eq ?p 1)) then
+      (bind ?action fold)
+      (bind $?params (create$ cloth))
+      (bind ?next-phase done)
    )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
