@@ -68,6 +68,104 @@
     (return (str-cat ?target "_" ?qualifier)))
   (return ?target))
 
+; Normaliza texto libre de Qwen a los destinos que FindSpace/Drop entienden:
+; table, container_down/top, shelf(_N) o floor. Si no reconoce la superficie,
+; mantiene table como soporte por defecto despues de navegar al lugar pedido.
+(deffunction contains-text (?value ?needle)
+  (return (neq (str-index ?needle ?value) FALSE)))
+
+(deffunction support-name (?value)
+  (return (or
+    (contains-text ?value "floor")
+    (contains-text ?value "suelo")
+    (contains-text ?value "table")
+    (contains-text ?value "mesa")
+    (contains-text ?value "shelf")
+    (contains-text ?value "rack")
+    (contains-text ?value "cabinet")
+    (contains-text ?value "bookcase")
+    (contains-text ?value "estante")
+    (contains-text ?value "repisa")
+    (contains-text ?value "container")
+    (contains-text ?value "trash")
+    (contains-text ?value "bin")
+    (contains-text ?value "box")
+    (contains-text ?value "bote")
+    (contains-text ?value "basura")
+    (contains-text ?value "caja"))))
+
+(deffunction drop-surface (?destination)
+  (if (or (contains-text ?destination "floor") (contains-text ?destination "suelo")) then
+    (return "floor"))
+  (if (contains-text ?destination "shelf_3") then
+    (return "shelf_3"))
+  (if (contains-text ?destination "shelf_2") then
+    (return "shelf_2"))
+  (if (contains-text ?destination "shelf_1") then
+    (return "shelf_1"))
+  (if (or (contains-text ?destination "shelf")
+          (contains-text ?destination "rack")
+          (contains-text ?destination "cabinet")
+          (contains-text ?destination "bookcase")
+          (contains-text ?destination "estante")
+          (contains-text ?destination "repisa")) then
+    (return "shelf"))
+  (if (or (contains-text ?destination "container_top")
+          (contains-text ?destination "container_high")
+          (contains-text ?destination "container_table")
+          (contains-text ?destination "encima")
+          (contains-text ?destination "sobre_mesa")) then
+    (return "container_top"))
+  (if (or (contains-text ?destination "container")
+          (contains-text ?destination "trash")
+          (contains-text ?destination "bin")
+          (contains-text ?destination "box")
+          (contains-text ?destination "bote")
+          (contains-text ?destination "basura")
+          (contains-text ?destination "caja")) then
+    (return "container_down"))
+  (return "table"))
+
+; Traduce conteos a AnalyzeObjects. Los filtros por color no se aplican aqui
+; porque la tool actual no tiene conteo filtrado por color; solo count_<class>.
+(deffunction count-query (?target ?qualifier ?kind)
+  (if (eq ?kind person) then
+    (return "count_person"))
+  (if (neq ?target "") then
+    (return (str-cat "count_" ?target)))
+  (return "count_objects"))
+
+(deffunction qualifier-value (?qualifier ?prefix ?start-index)
+  (if (eq (str-index ?prefix ?qualifier) 1) then
+    (return (sub-string ?start-index (str-length ?qualifier) ?qualifier)))
+  (return ""))
+
+(deffunction analyze-object-query (?target ?qualifier ?relation ?value)
+  (bind ?property (qualifier-value ?qualifier "property:" 10))
+  (if (and (eq ?relation "property") (neq ?value "")) then
+    (bind ?property ?value))
+  (if (or (contains-text ?qualifier "biggest") (contains-text ?property "biggest")) then
+    (return (str-cat "biggest_" ?target)))
+  (if (or (contains-text ?qualifier "smallest") (contains-text ?property "smallest")) then
+    (return (str-cat "smallest_" ?target)))
+  (if (neq ?property "") then
+    (return (str-cat "{\"action\":\"color\",\"target_class\":\"" ?target "\",\"color\":\"" ?property "\"}")))
+  (return (count-query ?target "" object)))
+
+; AnalyzePerson no cuenta personas; localiza personas por atributos visuales.
+; wearing:red_shirt -> color_red_shirt, gesture:waving -> gesture_waving.
+(deffunction analyze-person-query (?qualifier)
+  (bind ?gesture (qualifier-value ?qualifier "gesture:" 9))
+  (if (neq ?gesture "") then
+    (return (str-cat "gesture_" ?gesture)))
+  (bind ?wearing (qualifier-value ?qualifier "wearing:" 9))
+  (if (neq ?wearing "") then
+    (return (str-cat "color_" ?wearing)))
+  (bind ?pose (qualifier-value ?qualifier "pose:" 6))
+  (if (neq ?pose "") then
+    (return (str-cat "gesture_" ?pose)))
+  (return ""))
+
 (deffunction append-action (?action ?arg)
   (bind ?facts (find-all-facts ((?ac act-counter)) TRUE))
   (bind ?counter (nth$ 1 ?facts))
@@ -75,6 +173,16 @@
   (retract ?counter)
   (assert (act-counter (value (+ ?step 1))))
   (assert (action-step (step ?step) (action ?action) (arg ?arg))))
+
+; Drop consume object_id para seleccionar mano y el ultimo safe_drop_1 guardado
+; por FindSpace. Floor es la excepcion: no necesita FindSpace.
+(deffunction append-drop-sequence (?obj ?destination)
+  (bind ?surface (drop-surface ?destination))
+  (if (eq ?surface "floor") then
+    (append-action drop "floor")
+    else
+    (append-action find_space ?surface)
+    (append-action drop (object-id ?obj))))
 
 (deffunction append-say (?text)
   (bind ?facts (find-all-facts ((?sc say-counter)) TRUE))
@@ -123,8 +231,13 @@
   (retract ?g)
   (bind ?desc (describe-target ?target ?qualifier))
   (append-say (str-cat "I will look for " ?desc))
-  (append-action find_person (person-id ?desc))
-  (append-action focus ?desc))
+  (bind ?person_query (analyze-person-query ?qualifier))
+  (if (neq ?person_query "") then
+    (append-action analyze_person ?person_query)
+    (append-action approach "user_2")
+    else
+    (append-action find_person (person-id ?desc)))
+  (append-action focus "enable"))
 
 (defrule process-find-object
   (declare (salience 180))
@@ -136,7 +249,14 @@
   (bind ?desc (describe-target ?target ?qualifier))
   (append-say (str-cat "I will search for " ?desc))
   (append-action align "table")
-  (append-action find_object (object-id ?desc)))
+  (bind ?analysis "")
+  (if (neq ?qualifier "") then
+    (bind ?analysis (analyze-object-query ?target ?qualifier "" ""))
+    (append-action analyze_objects ?analysis))
+  (if (or (eq ?qualifier "") (eq (str-index "count_" ?analysis) 1)) then
+    (append-action find_object (object-id ?target))
+    else
+    (append-action say (str-cat "I found " ?desc))))
 
 (defrule process-take
   (declare (salience 180))
@@ -165,7 +285,7 @@
     (append-say "I will return to the instruction point")
     (append-action go_to "instruction_point"))
   (append-say (str-cat "I will deliver " ?obj " to you"))
-  (append-action give ?obj)
+  (append-action give (object-id ?obj))
   (append-action say (str-cat "I have delivered " ?obj))
   (assert (current-state (location "instruction_point") (holding "nothing"))))
 
@@ -179,7 +299,7 @@
   (retract ?g)
   (retract ?st)
   (append-say (str-cat "I will deliver " ?obj " to " ?dest))
-  (append-action give ?obj)
+  (append-action give (object-id ?obj))
   (append-action say (str-cat "I have delivered " ?obj))
   (assert (current-state (location ?loc) (holding "nothing"))))
 
@@ -192,12 +312,11 @@
   =>
   (retract ?g)
   (retract ?st)
-  (if (and (neq ?dest "") (neq ?loc ?dest)) then
+  (if (and (neq ?dest "") (neq ?loc ?dest) (not (support-name ?dest))) then
     (append-say (str-cat "I will navigate to " ?dest))
     (append-action go_to ?dest))
   (append-say (str-cat "I will place " ?obj))
-  (append-action find_space ?dest)
-  (append-action drop (object-id ?obj))
+  (append-drop-sequence ?obj ?dest)
   (append-action say (str-cat "I have placed " ?obj))
   (assert (current-state (location ?dest) (holding "nothing"))))
 
@@ -210,11 +329,11 @@
   =>
   (retract ?g)
   (retract ?st)
-  (if (and (neq ?dest "") (neq ?loc ?dest)) then
+  (if (and (neq ?dest "") (neq ?loc ?dest) (not (support-name ?dest))) then
     (append-say (str-cat "I will navigate to " ?dest))
     (append-action go_to ?dest))
   (append-say (str-cat "I will drop " ?obj))
-  (append-action drop (object-id ?obj))
+  (append-drop-sequence ?obj ?dest)
   (append-action say (str-cat "I have dropped " ?obj))
   (assert (current-state (location ?dest) (holding "nothing"))))
 
@@ -239,8 +358,10 @@
   (not (gpsr-goal (step ?prev&:(< ?prev ?step))))
   =>
   (retract ?g)
-  (append-say (str-cat "I will follow " ?person))
-  (append-action follow ?person)
+  (append-say (str-cat "I will look for " ?person))
+  (append-action find_person (person-id ?person))
+  (append-action focus "enable")
+  (append-action say "instruct_follow_only")
   (if (neq ?dest "") then
     (append-action say (str-cat "I will follow " ?person " to " ?dest))))
 
@@ -253,11 +374,7 @@
   (retract ?g)
   (bind ?desc (describe-target ?target ?qualifier))
   (append-say (str-cat "I will count " ?desc))
-  (if (eq ?kind person)
-    then
-      (append-action analyze_person ?desc)
-    else
-      (append-action analyze_objects ?desc))
+  (append-action analyze_objects (count-query ?target ?qualifier ?kind))
   (append-action say "count_category"))
 
 (defrule process-tell
@@ -301,9 +418,9 @@
   =>
   (retract ?g)
   (append-say (str-cat "I will greet " ?person))
-  (append-action analyze_person (person-id ?person))
+  (append-action find_person (person-id ?person))
   (append-action approach (person-id ?person))
-  (append-action focus "True")
+  (append-action focus "enable")
   (append-action say "greet"))
 
 (defrule process-unsupported-goal
