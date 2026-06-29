@@ -3,19 +3,20 @@
     
     <arg name="plan_name" default="hri"/>
     <arg name="use_goals_to_clips" default="false"/>
+    <arg name="clips_output" default="screen"/>
 
     <!-- Nodo CLIPS (Python) - Sistema de planificación -->
-    <node pkg="clips_node" exec="clips_node" name="clips_node" output="screen">
+    <node pkg="clips_node" exec="clips_node" name="clips_node" output="$(var clips_output)">
         <param name="plan_name" value="$(var plan_name)"/>
     </node>
 
     <!-- Nodo Primitive_to_clips - Sistema de planificación -->
-    <node pkg="primitive_to_clips" exec="primitive_to_clips_node" name="primitive_to_clips_node" output="screen">
+    <!-- <node pkg="primitive_to_clips" exec="primitive_to_clips_node" name="primitive_to_clips_node" output="screen">
         <param name="use_sim_time" value="false"/>
-    </node>
+    </node> -->
 
     <!-- Nodo Goals_to_clips - convierte goals directas de Qwen a hechos CLIPS -->
-    <node pkg="clips_node" exec="goals_to_clips_node" name="goals_to_clips_node" output="screen" if="$(var use_goals_to_clips)">
+    <node pkg="clips_node" exec="goals_to_clips_node" name="goals_to_clips_node" output="$(var clips_output)" if="$(var use_goals_to_clips)">
         <param name="use_sim_time" value="false"/>
     </node>
 

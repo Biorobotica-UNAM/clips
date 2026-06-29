@@ -41,6 +41,9 @@
 (deftemplate act-counter
   (slot value (type INTEGER)))
 
+(deftemplate person-counter
+  (slot value (type INTEGER)))
+
 (deftemplate ros-message
   (slot step (type INTEGER))
   (slot robot (default Justina))
@@ -49,6 +52,16 @@
 
 (deftemplate saved-info
   (slot value))
+
+(deftemplate visual-analysis
+  (slot target)
+  (slot qualifier)
+  (slot query)
+  (slot answer))
+
+(deftemplate visual-person-found
+  (slot target)
+  (slot source))
 
 (deftemplate final-steps-added)
 
@@ -62,6 +75,14 @@
 
 (deffunction person-id (?desc)
   (return (str-cat ?desc "_1")))
+
+(deffunction next-person-id (?desc)
+  (bind ?facts (find-all-facts ((?pc person-counter)) TRUE))
+  (bind ?counter (nth$ 1 ?facts))
+  (bind ?index (fact-slot-value ?counter value))
+  (retract ?counter)
+  (assert (person-counter (value (+ ?index 1))))
+  (return (str-cat ?desc "_" ?index)))
 
 (deffunction describe-target (?target ?qualifier)
   (if (neq ?qualifier "") then
@@ -93,6 +114,11 @@
     (contains-text ?value "bote")
     (contains-text ?value "basura")
     (contains-text ?value "caja"))))
+
+(deffunction table-support (?value)
+  (return (or
+    (contains-text ?value "table")
+    (contains-text ?value "mesa"))))
 
 (deffunction drop-surface (?destination)
   (if (or (contains-text ?destination "floor") (contains-text ?destination "suelo")) then
@@ -126,8 +152,67 @@
     (return "container_down"))
   (return "table"))
 
-; Traduce conteos a AnalyzeObjects. Los filtros por color no se aplican aqui
-; porque la tool actual no tiene conteo filtrado por color; solo count_<class>.
+(deffunction destination-phrase (?relation ?destination)
+  (if (eq ?destination "") then
+    (return ""))
+  (if (or (eq ?relation "in") (eq ?relation "on") (eq ?relation "to")) then
+    (return (str-cat " " ?relation " " ?destination)))
+  (if (or (contains-text ?destination "container")
+          (contains-text ?destination "trash")
+          (contains-text ?destination "bin")) then
+    (return (str-cat " in " ?destination)))
+  (return (str-cat " on " ?destination)))
+
+(deffunction qualifier-value (?qualifier ?prefix ?start-index)
+  (if (eq (str-index ?prefix ?qualifier) 1) then
+    (return (sub-string ?start-index (str-length ?qualifier) ?qualifier)))
+  (return ""))
+
+(deffunction normalize-person-attribute (?value)
+  (bind ?out "")
+  (bind ?i 1)
+  (while (<= ?i (str-length ?value)) do
+    (bind ?ch (sub-string ?i ?i ?value))
+    (if (or (eq ?ch " ") (eq ?ch "-")) then
+      (bind ?out (str-cat ?out "_"))
+      else
+      (if (neq ?ch "'") then
+        (bind ?out (str-cat ?out ?ch))))
+    (bind ?i (+ ?i 1)))
+  (return ?out))
+
+(deffunction normalize-gesture-attribute (?value)
+  (bind ?out (normalize-person-attribute ?value))
+  (if (contains-text ?out "pointing") then
+    (if (contains-text ?out "right") then
+      (return "pointing_right"))
+    (if (contains-text ?out "left") then
+      (return "pointing_left"))
+    (return "pointing"))
+  (if (or (contains-text ?out "waving") (contains-text ?out "wave")) then
+    (return "waving"))
+  (if (or (contains-text ?out "raising") (contains-text ?out "raise")) then
+    (if (contains-text ?out "right") then
+      (return "raising_right"))
+    (if (contains-text ?out "left") then
+      (return "raising_left"))
+    (return "raising"))
+  (bind ?suffix "_person")
+  (bind ?len (str-length ?out))
+  (bind ?slen (str-length ?suffix))
+  (if (and (>= ?len ?slen)
+           (eq (sub-string (+ (- ?len ?slen) 1) ?len ?out) ?suffix)) then
+    (return (sub-string 1 (- ?len ?slen) ?out)))
+  (return ?out))
+
+(deffunction describe-person-target (?target ?qualifier)
+  (bind ?gesture (qualifier-value ?qualifier "gesture:" 9))
+  (if (neq ?gesture "") then
+    (return (str-cat ?target " " ?gesture)))
+  (return (describe-target ?target ?qualifier)))
+
+; Traduce conteos a AnalyzeObjects para los comandos esperados:
+; count(person), count(category). No se generan filtros por color de objetos.
 (deffunction count-query (?target ?qualifier ?kind)
   (if (eq ?kind person) then
     (return "count_person"))
@@ -135,35 +220,71 @@
     (return (str-cat "count_" ?target)))
   (return "count_objects"))
 
-(deffunction qualifier-value (?qualifier ?prefix ?start-index)
-  (if (eq (str-index ?prefix ?qualifier) 1) then
-    (return (sub-string ?start-index (str-length ?qualifier) ?qualifier)))
+; La tool actual de AnalyzeObjects solo tiene extremos por tamaño:
+; big/small. Para comandos sin medicion real de peso/grosor usamos proxy visual.
+(deffunction size-filter (?qualifier)
+  (bind ?property (qualifier-value ?qualifier "property:" 10))
+  (if (or (contains-text ?qualifier "biggest")
+          (contains-text ?qualifier "largest")
+          (contains-text ?property "biggest")
+          (contains-text ?property "largest")
+          (contains-text ?property "heaviest")) then
+    (return "big"))
+  (if (or (contains-text ?qualifier "smallest")
+          (contains-text ?property "smallest")
+          (contains-text ?property "lightest")
+          (contains-text ?property "thinnest")) then
+    (return "small"))
   (return ""))
 
 (deffunction analyze-object-query (?target ?qualifier ?relation ?value)
-  (bind ?property (qualifier-value ?qualifier "property:" 10))
-  (if (and (eq ?relation "property") (neq ?value "")) then
-    (bind ?property ?value))
-  (if (or (contains-text ?qualifier "biggest") (contains-text ?property "biggest")) then
+  (bind ?filter (size-filter ?qualifier))
+  (if (eq ?filter "big") then
     (return (str-cat "biggest_" ?target)))
-  (if (or (contains-text ?qualifier "smallest") (contains-text ?property "smallest")) then
+  (if (eq ?filter "small") then
     (return (str-cat "smallest_" ?target)))
-  (if (neq ?property "") then
-    (return (str-cat "{\"action\":\"color\",\"target_class\":\"" ?target "\",\"color\":\"" ?property "\"}")))
-  (return (count-query ?target "" object)))
+  (return ""))
+
+(deffunction analyze-answer-key (?qualifier)
+  (bind ?property (qualifier-value ?qualifier "property:" 10))
+  (if (or (contains-text ?qualifier "biggest")
+          (contains-text ?property "biggest")
+          (contains-text ?property "largest")) then
+    (return "biggest_category"))
+  (if (contains-text ?property "heaviest") then
+    (return "heaviest_category"))
+  (if (or (contains-text ?qualifier "smallest")
+          (contains-text ?property "smallest")) then
+    (return "smallest_category"))
+  (if (contains-text ?property "lightest") then
+    (return "lightest_category"))
+  (if (contains-text ?property "thinnest") then
+    (return "thinnest_category"))
+  (return ""))
+
+(deffunction talk-answer-key (?info)
+  (if (and (contains-text ?info "team") (contains-text ?info "name")) then
+    (return "team_name"))
+  (if (contains-text ?info "gesture") then
+    (return "gesture_category"))
+  (if (and (contains-text ?info "day") (contains-text ?info "week")) then
+    (return "day_of_week"))
+  (return ""))
 
 ; AnalyzePerson no cuenta personas; localiza personas por atributos visuales.
 ; wearing:red_shirt -> color_red_shirt, gesture:waving -> gesture_waving.
 (deffunction analyze-person-query (?qualifier)
   (bind ?gesture (qualifier-value ?qualifier "gesture:" 9))
   (if (neq ?gesture "") then
-    (return (str-cat "gesture_" ?gesture)))
+    (return (str-cat "gesture_" (normalize-gesture-attribute ?gesture))))
   (bind ?wearing (qualifier-value ?qualifier "wearing:" 9))
+  (if (eq ?wearing "") then
+    (bind ?wearing (qualifier-value ?qualifier "wearing=" 9)))
   (if (neq ?wearing "") then
-    (return (str-cat "color_" ?wearing)))
+    (return (str-cat "color_" (normalize-person-attribute ?wearing))))
   (bind ?pose (qualifier-value ?qualifier "pose:" 6))
   (if (neq ?pose "") then
-    (return (str-cat "gesture_" ?pose)))
+    (return (str-cat "gesture_" (normalize-gesture-attribute ?pose))))
   (return ""))
 
 (deffunction append-action (?action ?arg)
@@ -201,6 +322,7 @@
   (retract ?s)
   (assert (say-counter (value 1)))
   (assert (act-counter (value 1003)))
+  (assert (person-counter (value 1)))
   (assert (current-state (location "unknown") (holding "nothing")))
   (assert (action-step (step 1001) (action say) (arg "Please stay still, I want to remember your face")))
   (assert (action-step (step 1002) (action find_person) (arg "anybody")))
@@ -229,14 +351,17 @@
   (not (gpsr-goal (step ?prev&:(< ?prev ?step))))
   =>
   (retract ?g)
-  (bind ?desc (describe-target ?target ?qualifier))
+  (bind ?desc (describe-person-target ?target ?qualifier))
   (append-say (str-cat "I will look for " ?desc))
   (bind ?person_query (analyze-person-query ?qualifier))
   (if (neq ?person_query "") then
     (append-action analyze_person ?person_query)
     (append-action approach "user_2")
+    (assert (visual-person-found (target ?target) (source "user_2")))
     else
-    (append-action find_person (person-id ?desc)))
+    (bind ?pid (next-person-id ?desc))
+    (append-action find_person ?pid)
+    (assert (visual-person-found (target ?target) (source ?pid))))
   (append-action focus "enable"))
 
 (defrule process-find-object
@@ -244,16 +369,23 @@
   (planning-ready)
   ?g <- (gpsr-goal (step ?step) (name find) (target ?target) (kind ?kind&~person) (qualifier ?qualifier))
   (not (gpsr-goal (step ?prev&:(< ?prev ?step))))
+  (current-state (location ?loc))
   =>
   (retract ?g)
   (bind ?desc (describe-target ?target ?qualifier))
   (append-say (str-cat "I will search for " ?desc))
-  (append-action align "table")
+  (if (table-support ?loc) then
+    (append-action align "table"))
   (bind ?analysis "")
+  (bind ?answer "")
   (if (neq ?qualifier "") then
     (bind ?analysis (analyze-object-query ?target ?qualifier "" ""))
-    (append-action analyze_objects ?analysis))
-  (if (or (eq ?qualifier "") (eq (str-index "count_" ?analysis) 1)) then
+    (bind ?answer (analyze-answer-key ?qualifier))
+    (if (neq ?analysis "") then
+      (append-action analyze_objects ?analysis))
+    (if (neq ?answer "") then
+      (assert (visual-analysis (target ?target) (qualifier ?qualifier) (query ?analysis) (answer ?answer)))))
+  (if (or (eq ?qualifier "") (eq ?analysis "") (eq (str-index "count_" ?analysis) 1)) then
     (append-action find_object (object-id ?target))
     else
     (append-action say (str-cat "I found " ?desc))))
@@ -285,6 +417,7 @@
     (append-say "I will return to the instruction point")
     (append-action go_to "instruction_point"))
   (append-say (str-cat "I will deliver " ?obj " to you"))
+  (append-action approach "guest_1")
   (append-action give (object-id ?obj))
   (append-action say (str-cat "I have delivered " ?obj))
   (assert (current-state (location "instruction_point") (holding "nothing"))))
@@ -299,6 +432,13 @@
   (retract ?g)
   (retract ?st)
   (append-say (str-cat "I will deliver " ?obj " to " ?dest))
+  (bind ?known (find-all-facts ((?vp visual-person-found)) (eq ?vp:target ?dest)))
+  (if (> (length$ ?known) 0) then
+    (bind ?found (nth$ 1 ?known))
+    (append-action approach (fact-slot-value ?found source))
+    else
+    (append-action find_person (person-id ?dest))
+    (append-action approach (person-id ?dest)))
   (append-action give (object-id ?obj))
   (append-action say (str-cat "I have delivered " ?obj))
   (assert (current-state (location ?loc) (holding "nothing"))))
@@ -306,7 +446,7 @@
 (defrule process-place
   (declare (salience 180))
   (planning-ready)
-  ?g <- (gpsr-goal (step ?step) (name place) (target ?obj) (destination ?dest))
+  ?g <- (gpsr-goal (step ?step) (name place) (target ?obj) (destination ?dest) (relation ?rel))
   (not (gpsr-goal (step ?prev&:(< ?prev ?step))))
   ?st <- (current-state (location ?loc))
   =>
@@ -315,7 +455,7 @@
   (if (and (neq ?dest "") (neq ?loc ?dest) (not (support-name ?dest))) then
     (append-say (str-cat "I will navigate to " ?dest))
     (append-action go_to ?dest))
-  (append-say (str-cat "I will place " ?obj))
+  (append-say (str-cat "I will place " ?obj (destination-phrase ?rel ?dest)))
   (append-drop-sequence ?obj ?dest)
   (append-action say (str-cat "I have placed " ?obj))
   (assert (current-state (location ?dest) (holding "nothing"))))
@@ -323,7 +463,7 @@
 (defrule process-drop
   (declare (salience 180))
   (planning-ready)
-  ?g <- (gpsr-goal (step ?step) (name drop) (target ?obj) (destination ?dest))
+  ?g <- (gpsr-goal (step ?step) (name drop) (target ?obj) (destination ?dest) (relation ?rel))
   (not (gpsr-goal (step ?prev&:(< ?prev ?step))))
   ?st <- (current-state (location ?loc))
   =>
@@ -332,7 +472,7 @@
   (if (and (neq ?dest "") (neq ?loc ?dest) (not (support-name ?dest))) then
     (append-say (str-cat "I will navigate to " ?dest))
     (append-action go_to ?dest))
-  (append-say (str-cat "I will drop " ?obj))
+  (append-say (str-cat "I will drop " ?obj (destination-phrase ?rel ?dest)))
   (append-drop-sequence ?obj ?dest)
   (append-action say (str-cat "I have dropped " ?obj))
   (assert (current-state (location ?dest) (holding "nothing"))))
@@ -347,8 +487,8 @@
   (retract ?g)
   (retract ?st)
   (append-say (str-cat "Please follow me to " ?dest))
-  (append-action go_to ?dest)
   (append-action say (str-cat "I have guided " ?person " to " ?dest))
+  (append-action go_to ?dest)
   (assert (current-state (location ?dest) (holding ?held))))
 
 (defrule process-follow
@@ -358,24 +498,50 @@
   (not (gpsr-goal (step ?prev&:(< ?prev ?step))))
   =>
   (retract ?g)
-  (append-say (str-cat "I will look for " ?person))
-  (append-action find_person (person-id ?person))
-  (append-action focus "enable")
-  (append-action say "instruct_follow_only")
   (if (neq ?dest "") then
-    (append-action say (str-cat "I will follow " ?person " to " ?dest))))
+    (append-say (str-cat "I will follow " ?person " to " ?dest))
+    else
+    (append-say (str-cat "I will follow " ?person)))
+  (bind ?focus_needed TRUE)
+  (bind ?known (find-all-facts ((?vp visual-person-found)) (eq ?vp:target ?person)))
+  (if (> (length$ ?known) 0) then
+    (bind ?found (nth$ 1 ?known))
+    (bind ?source (fact-slot-value ?found source))
+    (if (neq ?source "user_2") then
+      (append-action approach ?source)
+      else
+      (bind ?focus_needed FALSE))
+    else
+    (bind ?pid (next-person-id ?person))
+    (append-action find_person ?pid)
+    (append-action approach ?pid))
+  (if ?focus_needed then
+    (append-action focus "enable"))
+  (if (neq ?dest "") then
+    (append-action say (str-cat "I will follow " ?person " to " ?dest))
+    (append-action say (str-cat "instruct_follow_to_" ?dest))
+    else
+    (append-action say "instruct_follow_only")))
 
 (defrule process-count
   (declare (salience 180))
   (planning-ready)
   ?g <- (gpsr-goal (step ?step) (name count) (target ?target) (qualifier ?qualifier) (kind ?kind))
   (not (gpsr-goal (step ?prev&:(< ?prev ?step))))
+  ?st <- (current-state (location ?loc) (holding ?held))
   =>
   (retract ?g)
+  (retract ?st)
   (bind ?desc (describe-target ?target ?qualifier))
   (append-say (str-cat "I will count " ?desc))
   (append-action analyze_objects (count-query ?target ?qualifier ?kind))
-  (append-action say "count_category"))
+  ; Count answers are normally requested by the operator at the entrance.
+  ; Count where the objects are, return to the instruction point, then report.
+  (if (neq ?loc "instruction_point") then
+    (append-say "I will return to the instruction point to report the count")
+    (append-action go_to "instruction_point"))
+  (append-action say "count_category")
+  (assert (current-state (location "instruction_point") (holding ?held))))
 
 (defrule process-tell
   (declare (salience 180))
@@ -384,10 +550,28 @@
   (not (gpsr-goal (step ?prev&:(< ?prev ?step))))
   =>
   (retract ?g)
-  (if (neq ?qualifier "") then
-    (append-action say ?qualifier)
+  (if (contains-text ?info "gesture") then
+    (append-say "I will tell the gesture")
     else
-    (append-action say ?info)))
+    (append-say (str-cat "I will tell " ?info)))
+  (bind ?answer (analyze-answer-key ?qualifier))
+  (if (neq ?answer "") then
+    (bind ?known (find-all-facts ((?va visual-analysis))
+      (and (eq ?va:target ?info) (eq ?va:qualifier ?qualifier))))
+    (if (= (length$ ?known) 0) then
+      (bind ?analysis (analyze-object-query ?info ?qualifier "" ""))
+      (append-action analyze_objects ?analysis)
+      (assert (visual-analysis (target ?info) (qualifier ?qualifier) (query ?analysis) (answer ?answer))))
+    (append-action say ?answer)
+    else
+    (if (neq ?qualifier "") then
+      (append-action say ?qualifier)
+      else
+      (bind ?talk_answer (talk-answer-key ?info))
+      (if (neq ?talk_answer "") then
+        (append-action say ?talk_answer)
+        else
+        (append-action say ?info)))))
 
 (defrule process-save
   (declare (salience 180))
@@ -397,7 +581,17 @@
   =>
   (retract ?g)
   (assert (saved-info (value ?info)))
-  (append-action say (str-cat "I will remember " ?info)))
+  (if (contains-text ?info "gesture") then
+    (append-say "I will save the gesture")
+    else
+    (append-say (str-cat "I will save " ?info)))
+  ; For save(gesture), observe the currently visible person and let
+  ; AnalyzePerson store the detected gesture in analytics.gesture.
+  (if (contains-text ?info "gesture") then
+    (append-action say "I will observe the person's gesture")
+    (append-action analyze_person "gesture_any")
+    else
+    (append-action say (str-cat "I will remember " ?info))))
 
 (defrule process-answer-question
   (declare (salience 180))
@@ -418,8 +612,13 @@
   =>
   (retract ?g)
   (append-say (str-cat "I will greet " ?person))
-  (append-action find_person (person-id ?person))
-  (append-action approach (person-id ?person))
+  (bind ?known (find-all-facts ((?vp visual-person-found)) (eq ?vp:target ?person)))
+  (if (> (length$ ?known) 0) then
+    (bind ?found (nth$ 1 ?known))
+    (append-action approach (fact-slot-value ?found source))
+    else
+    (append-action find_person (person-id ?person))
+    (append-action approach (person-id ?person)))
   (append-action focus "enable")
   (append-action say "greet"))
 

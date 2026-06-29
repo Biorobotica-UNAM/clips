@@ -242,9 +242,11 @@ class ClipsNode(Node):
         return response
 
     def _handle_assert_facts_batch(self, request, response):
-        """Assert multiple facts and run the engine."""
+        """Start a fresh planning context, assert multiple facts, and run."""
 
         def task():
+            self._current_plan.clear()
+            self._engine.reset()
             self._engine.assert_facts(request.data)
             self._run_and_collect_plan()
 

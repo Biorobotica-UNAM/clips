@@ -37,6 +37,7 @@ class GoalParser:
             raise ValueError("goals must be a list")
 
         goals = [self.parse_one(str(item)) for item in raw_goals]
+        goals = self._repair_malformed_goals(goals)
         self._infer_person_targets(goals)
         return goals
 
@@ -109,6 +110,93 @@ class GoalParser:
     def _destination(self, goal: ParsedGoal) -> str:
         kwargs = goal.kwargs or {}
         return kwargs.get("to") or (goal.args[1] if len(goal.args) > 1 else "")
+
+    def _repair_malformed_goals(self, goals: List[ParsedGoal]) -> List[ParsedGoal]:
+        repaired: List[ParsedGoal] = []
+        index = 0
+
+        while index < len(goals):
+            goal = goals[index]
+            if not self._is_malformed_person_go(goal):
+                repaired.append(goal)
+                index += 1
+                continue
+
+            find_goal = self._person_find_from_malformed_go(goal)
+            next_goal = goals[index + 1] if index + 1 < len(goals) else None
+
+            if self._is_follow_same_person(next_goal, find_goal):
+                destination = self._destination(next_goal)
+                if destination:
+                    repaired.append(
+                        ParsedGoal(
+                            name="go",
+                            target=destination,
+                            args=(destination,),
+                            kwargs={},
+                        )
+                    )
+                    repaired.append(find_goal)
+                    repaired.append(self._follow_without_destination(next_goal))
+                    index += 2
+                    continue
+
+            repaired.append(find_goal)
+            index += 1
+
+        return repaired
+
+    def _is_malformed_person_go(self, goal: ParsedGoal) -> bool:
+        if goal.name != "go":
+            return False
+
+        kwargs = goal.kwargs or {}
+        return (
+            goal.target in {"person", "user", "me"} or
+            kwargs.get("finding") in {"person", "user", "me"} or
+            self._person_qualifier(goal)
+        )
+
+    def _person_find_from_malformed_go(self, goal: ParsedGoal) -> ParsedGoal:
+        kwargs = goal.kwargs or {}
+        person_target = kwargs.get("finding") or goal.target or "person"
+        if person_target in {"user", "me"}:
+            person_target = "person"
+
+        find_kwargs = {
+            key: value
+            for key, value in kwargs.items()
+            if key in {"gesture", "pose", "wearing"}
+        }
+        return ParsedGoal(
+            name="find",
+            target=person_target,
+            args=(person_target,),
+            kwargs=find_kwargs,
+        )
+
+    def _is_follow_same_person(
+        self,
+        goal: Optional[ParsedGoal],
+        find_goal: ParsedGoal,
+    ) -> bool:
+        if goal is None or goal.name != "follow":
+            return False
+
+        return (goal.target or "person") == (find_goal.target or "person")
+
+    def _follow_without_destination(self, goal: ParsedGoal) -> ParsedGoal:
+        kwargs = {
+            key: value
+            for key, value in (goal.kwargs or {}).items()
+            if key != "to"
+        }
+        return ParsedGoal(
+            name=goal.name,
+            target=goal.target,
+            args=goal.args,
+            kwargs=kwargs,
+        )
 
 
 class ClipsGoalFactBuilder:
@@ -218,7 +306,7 @@ class GoalsToClipsNode(Node):
             facts = self._builder.build(goals)
             self.get_logger().info("==== GOAL CLIPS FACTS ====")
             for index, fact in enumerate(facts, start=1):
-                self.get_logger().info("[%d] %s", index, fact)
+                self.get_logger().info(f"[{index}] {fact}")
             self.get_logger().info("==========================")
 
             if not self._assert_facts(facts):
@@ -231,7 +319,7 @@ class GoalsToClipsNode(Node):
             response.data = "OK"
             return response
         except Exception as exc:
-            self.get_logger().error("Goal conversion error: %s", exc)
+            self.get_logger().error(f"Goal conversion error: {exc}")
             response.data = f"ERROR: {exc}"
             return response
 
