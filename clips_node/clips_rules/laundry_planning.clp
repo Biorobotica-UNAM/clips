@@ -95,9 +95,9 @@
          (case 1 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
          (case 2 then (bind ?action say) (bind $?params (create$ request_open_door)))
          (case 3 then (bind ?action check) (bind $?params (create$ door)))
-         (case 4 then (bind ?action say) (bind $?params (create$ move_to_laundry_room)))
-         (case 5 then (bind ?action go_to) (bind $?params (create$ basket)))
-         (case 6 then (bind ?action say) (bind $?params (create$ arrived_laundry_room)))
+         ;(case 4 then (bind ?action say) (bind $?params (create$ move_to_laundry_room)))
+         (case 4 then (bind ?action go_to) (bind $?params (create$ basket)))
+         ;(case 6 then (bind ?action say) (bind $?params (create$ arrived_laundry_room)))
          (default
             (bind ?next-phase done)
          )
@@ -116,32 +116,32 @@
          ;; Search clothes
          ;; -------------------------------------------------
 
-         (case 1 then
-            (bind ?action say)
-            (bind $?params (create$ announce_find_clothes))
-         )
+         ;(case 1 then
+         ;   (bind ?action say)
+         ;   (bind $?params (create$ announce_find_clothes))
+         ;)
 
-         (case 2 then
+         (case 1 then
             (bind ?action align)
             (bind $?params (create$ laundry_machine))
          )
 
-         (case 3 then
+         (case 2 then
             (bind ?action find_object)
             (bind $?params (create$ cloth))
          )
 
-         (case 4 then
-            (bind ?action say)
-            (bind $?params (create$ acknowledge_cloth))
-         )
+         ;(case 4 then
+         :   (bind ?action say)
+         :   (bind $?params (create$ acknowledge_cloth))
+         :)
 
          ;(case 5 then
          ;   (bind ?action take)
          ;   (bind $?params (create$ cloth))
          ;)
 
-         (case 5 then
+         (case 3 then
             (bind ?action say)
             (bind $?params (create$ Please, place the cloth in my basket))
          )
@@ -150,22 +150,22 @@
          ;; Move cloth to table
          ;; -------------------------------------------------
 
-         (case 6 then
-            (bind ?action say)
-            (bind $?params (create$ move_to_table))
-         )
+         ;(case 6 then
+         ;   (bind ?action say)
+         ;   (bind $?params (create$ move_to_table))
+         ;)
 
-         (case 7 then
+         (case 4 then
             (bind ?action go_to)
             (bind $?params (create$ kitchen_table))
          )
 
-         (case 8 then
+         (case 5 then
             (bind ?action align)
             (bind $?params (create$ table))
          )
 
-         (case 9 then
+         (case 6 then
             (bind ?action drop)
             (bind $?params (create$ cloth))
          )
