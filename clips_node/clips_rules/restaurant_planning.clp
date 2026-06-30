@@ -126,8 +126,10 @@
 
       (switch ?p
 
-         (case 1 then (bind ?action say) (bind $?params (create$ search_customer_1)))
-         (case 2 then (bind ?action find_pose) (bind $?params (create$ waving_1)))
+         (case 1 then (bind ?action say) (bind $?params (create$ customer_detected)))
+         (case 2 then (bind ?action find_pose) (bind $?params (create$ waving)))
+         (case 3 then (bind ?action saveloc) (bind $?params (create$ customer)))
+         (case 4 then (bind ?action focus) (bind $?params (create$ enable)))
          (default (bind ?next-phase done))
       )
    )
@@ -140,9 +142,10 @@
 
       (switch ?p
 
-         (case 1 then (bind ?action say) (bind $?params (create$ going_to_customer)))
-         (case 2 then (bind ?action approach) (bind $?params (create$ customer_1)))
-         (case 3 then (bind ?action say) (bind $?params (create$ reached_customer)))
+         (case 1 then (bind ?action say) (bind $?params (create$ announce_nav_customer_1)))
+         (case 2 then (bind ?action focus) (bind $?params (create$ disable)))
+         (case 3 then (bind ?action go_to) (bind $?params (create$ customer)))
+         (case 4 then (bind ?action say) (bind $?params (create$ announce_nav_end_customer_1)))
 
          (default
             (bind ?next-phase done))
