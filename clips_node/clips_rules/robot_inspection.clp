@@ -101,9 +101,11 @@
 
    (if (eq ?name GO_TO_INSPECTION_POINT) then
       (switch ?p
-         (case 1 then (bind ?action say) (bind $?params (create$ going_to_inspection_point)))
-         (case 2 then (bind ?action go_to) (bind $?params (create$ inspection_point)))
-         (case 3 then (bind ?action say) (bind $?params (create$ reached_inspection_point)))
+         (case 1 then (bind ?action say) (bind $?params (create$ wait_for_command_continue)))
+         (case 2 then (bind ?action listen) (bind $?params (create$ continue)))
+         (case 3 then (bind ?action say) (bind $?params (create$ going_to_inspection_point)))
+         (case 4 then (bind ?action go_to) (bind $?params (create$ inspection_point)))
+         (case 5 then (bind ?action say) (bind $?params (create$ reached_inspection_point)))
 
          (default (bind ?next-phase done))
       )
