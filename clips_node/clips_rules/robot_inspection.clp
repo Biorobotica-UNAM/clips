@@ -1,118 +1,190 @@
-; -------------------------
-; Templates necesarios
-; -------------------------
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ROBOT INSPECTION LINEAR PLAN
+;; Uses: phase + stack + step
+;; Entry: (assert (start (name action-planning)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftemplate plan-started)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TEMPLATES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftemplate item
-   (slot type)
+(deftemplate start
    (slot name)
-   (slot room)
 )
 
-(deftemplate goal
-   (slot step   (type INTEGER))
-   (slot action (type SYMBOL))
-   (slot robot  (type SYMBOL))
-   (slot room)
-   (slot objective)
-   (slot target)
+(deftemplate state
+   (slot name)
+   (slot phase)
 )
 
-(deftemplate current-step
-  (slot value (type INTEGER))
+(deftemplate stack
+   (multislot states)
 )
 
-(deffacts initial-state
-   (item (type Robot) (name robot) (room kitchen))
+(deftemplate plan-control
+   (slot step)
 )
-
 
 (deftemplate ros-message
-   (slot step   (type INTEGER))
-   (slot content (type STRING))
+   (slot step)
+   (slot robot)
+   (slot action)
+   (multislot params)
 )
 
-(defrule announce-plan-start
-   (declare (salience 1000))
-   ?g <- (goal (step ?s))
-   (not (goal (step ?s2&:(< ?s2 ?s))))
-   (not (plan-started))
+(deftemplate plan-note
+   (slot robot)
+   (slot state)
+)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; INITIALIZATION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defrule initialize
+   ?s <- (start (name action-planning))
    =>
-   (assert (plan-started))
-   (assert (ros-message
-      (step 0)
-      (content "say start_robot_inspection")))
+   (retract ?s)
+
+   (assert (plan-control (step 1)))
+
+   (assert (stack (states
+      START_ROBOT_INSPECTION
+      CHECK_DOOR
+      GO_TO_INSPECTION_POINT
+      WAIT_CONTINUE
+      GO_TO_EXIT
+      FINISH_ROBOT_INSPECTION)))
+
+   (assert (plan-note (robot Justina) (state START_ROBOT_INSPECTION)))
+   (assert (state (name START_ROBOT_INSPECTION) (phase 1)))
 )
 
-; ==========================================================
-; Reglas para mover al robot a otra habitación
-; ==========================================================
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GENERIC STEP SENDER
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defrule move-robot
-   ?g <- (goal (step ?s)
-               (action move)
-               (robot ?r)
-               (room ?target))
-   (not (goal (step ?s2&:(< ?s2 ?s))))
+(defrule execute-phase
+   ?pc <- (plan-control (step ?n))
+   ?s  <- (state (name ?name) (phase ?p&~done))
    =>
-   ;; consumir el goal
-   (retract ?g)
+   (bind ?action none)
+   (bind $?params (create$))
+   (bind ?next-phase (+ ?p 1))
 
-   ;; anunciar acción
-   (assert (ros-message
-      (step ?s)
-      (content (str-cat "say announce_nav_" ?target))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; START_ROBOT_INSPECTION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-   ;; emitir comando a ROS
-   (assert (ros-message
-      (step ?s)
-      (content (str-cat "goto " ?target))))
+   (if (and (eq ?name START_ROBOT_INSPECTION) (eq ?p 1)) then
+      (bind ?action say)
+      (bind $?params (create$ start_robot_inspection))
+      (bind ?next-phase done))
 
-   (assert (ros-message
-      (step ?s)
-      (content (str-cat "say announce_nav_end_" ?target))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; CHECK_DOOR
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (eq ?name CHECK_DOOR) then
+      (switch ?p
+         (case 1 then (bind ?action say) (bind $?params (create$ check_door)))
+         (case 2 then (bind ?action check) (bind $?params (create$ door)))
+
+         (default (bind ?next-phase done))
+      )
+   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GO_TO_INSPECTION_POINT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (eq ?name GO_TO_INSPECTION_POINT) then
+      (switch ?p
+         (case 1 then (bind ?action say) (bind $?params (create$ going_to_inspection_point)))
+         (case 2 then (bind ?action go_to) (bind $?params (create$ inspection_point)))
+         (case 3 then (bind ?action say) (bind $?params (create$ reached_inspection_point)))
+
+         (default (bind ?next-phase done))
+      )
+   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; WAIT_CONTINUE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (eq ?name WAIT_CONTINUE) then
+      (switch ?p
+         (case 1 then (bind ?action say) (bind $?params (create$ wait_for_command_continue)))
+         (case 2 then (bind ?action listen) (bind $?params (create$ continue)))
+
+         (default (bind ?next-phase done))
+      )
+   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GO_TO_EXIT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (eq ?name GO_TO_EXIT) then
+      (switch ?p
+         (case 1 then (bind ?action say) (bind $?params (create$ going_to_exit)))
+         (case 2 then (bind ?action go_to) (bind $?params (create$ exit)))
+         (case 3 then (bind ?action say) (bind $?params (create$ reached_exit)))
+
+         (default (bind ?next-phase done))
+      )
+   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; FINISH_ROBOT_INSPECTION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (and (eq ?name FINISH_ROBOT_INSPECTION) (eq ?p 1)) then
+      (bind ?action say)
+      (bind $?params (create$ finish_robot_inspection))
+      (bind ?next-phase done))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; EXECUTION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+   (if (neq ?action none) then
+      (assert (ros-message
+                (robot Justina)
+                (action ?action)
+                (params $?params)
+                (step ?n)))
+      (modify ?pc (step (+ ?n 1)))
+   )
+
+   (if (eq ?next-phase done) then
+      (modify ?s (phase done))
+   else
+      (modify ?s (phase ?next-phase)))
 )
 
-; ==========================================================
-; Reglas para esperar y escuchar eventos externos
-; ==========================================================
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; MOVE TO NEXT MACRO STATE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defrule wait-for-objective
-?g <- (goal (step ?s)
-            (action wait_for)
-            (robot ?r)
-            (objective ?o))
-(not (goal (step ?s2&:(< ?s2 ?s))))
-=>
-(retract ?g)
+(defrule next-macro
+   ?s <- (state (name ?name) (phase done))
+   ?st <- (stack (states $?all))
+   =>
+   (retract ?s)
+   (retract ?st)
 
-;; anunciar
-(assert (ros-message
-   (step ?s)
-   (content "say wait_for_door")))
+   (bind $?rest (rest$ $?all))
 
-(assert (ros-message
-   (step ?s)
-   (content (str-cat "wait_for " ?o))))
-)
+   (if (> (length$ $?rest) 0) then
+      (bind ?next (nth$ 1 $?rest))
 
+      (assert (stack (states $?rest)))
 
-(defrule listen-for-target
-?g <- (goal (step ?s)
-            (action listen_for)
-            (robot ?r)
-            (target ?t))
-(not (goal (step ?s2&:(< ?s2 ?s))))
-=>
-(retract ?g)
+      (assert (plan-note
+                (robot Justina)
+                (state ?next)))
 
-;; anunciar
-(assert (ros-message
-   (step ?s)
-   (content "say wait_for_command_continue")))
-
-(assert (ros-message
-   (step ?s)
-   (content (str-cat "listen_for " ?t))))
+      (assert (state (name ?next) (phase 1)))
+   )
 )
