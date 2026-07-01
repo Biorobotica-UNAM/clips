@@ -89,7 +89,6 @@
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ check_door)))
          (case 2 then (bind ?action check) (bind $?params (create$ door)))
-         (case 3 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
 
          (default (bind ?next-phase done))
       )
@@ -103,9 +102,10 @@
       (switch ?p
          (case 1 then (bind ?action say) (bind $?params (create$ wait_for_command_continue)))
          (case 2 then (bind ?action listen) (bind $?params (create$ continue)))
-         (case 3 then (bind ?action say) (bind $?params (create$ going_to_inspection_point)))
-         (case 4 then (bind ?action go_to) (bind $?params (create$ inspection_point)))
-         (case 5 then (bind ?action say) (bind $?params (create$ reached_inspection_point)))
+         (case 3 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
+         (case 4 then (bind ?action say) (bind $?params (create$ going_to_inspection_point)))
+         (case 5 then (bind ?action go_to) (bind $?params (create$ inspection_point)))
+         (case 6 then (bind ?action say) (bind $?params (create$ reached_inspection_point)))
 
          (default (bind ?next-phase done))
       )
