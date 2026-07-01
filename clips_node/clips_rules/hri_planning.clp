@@ -140,9 +140,7 @@
          (case 14 then (bind ?action say) (bind $?params (create$ acknowledge_drink_2)))
          (case 15 then (bind ?action say) (bind $?params (create$ instruct_follow_robot)))
          (case 16 then (bind ?action focus) (bind $?params (create$ disable)))
-         ;(case 15 then (bind ?action say) (bind $?params (create$ going_to_living_room)))
          (case 17 then (bind ?action go_to) (bind $?params (create$ living_room)))
-         ;(case 17 then (bind ?action say) (bind $?params (create$ reached_living_room)))
          (case 18 then (bind ?action say) (bind $?params (create$ search_empty_seat)))
          (case 19 then (bind ?action find_object) (bind $?params (create$ seat_2)))
          (case 20 then (bind ?action point) (bind $?params (create$ enable)))
@@ -159,7 +157,6 @@
 
    (if (eq ?name INTRODUCE_GUESTS) then
       (switch ?p
-         ;(case 1 then (bind ?action say) (bind $?params (create$ search_guest_1)))
          (case 1 then (bind ?action find_person) (bind $?params (create$ guest_1)))
          (case 2 then (bind ?action say) (bind $?params (create$ introduce_guest_2)))
          (case 3 then (bind ?action say) (bind $?params (create$ describe_guest_2)))
@@ -181,7 +178,6 @@
          (case 1 then (bind ?action approach) (bind $?params (create$ guest_2)))
          (case 2 then (bind ?action receive) (bind $?params (create$ gift)))
          (case 3 then (bind ?action go_to) (bind $?params (create$ living_room)))
-         ;(case 4 then (bind ?action say) (bind $?params (create$ search_host)))
          (case 4 then (bind ?action find_person) (bind $?params (create$ host_1)))
          (case 5 then (bind ?action approach) (bind $?params (create$ host_1)))
          (case 6 then (bind ?action say) (bind $?params (create$ inform_present)))
