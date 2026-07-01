@@ -91,8 +91,9 @@
       (switch ?p 
          (case 1 then (bind ?action say)   (bind $?params (create$ request_open_door)))
          (case 2 then (bind ?action check) (bind $?params (create$ door)))
-         (case 3 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
-         (case 4 then (bind ?action go_to)  (bind $?params (create$ kitchen_table)))
+         (case 3 then (bind ?action say) (bind $?params (create$ Watch out. I will move forward)))
+         (case 4 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
+         (case 5 then (bind ?action go_to)  (bind $?params (create$ kitchen_table)))
          (default
             (bind ?next-phase done))
       )

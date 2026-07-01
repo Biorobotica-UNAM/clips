@@ -112,7 +112,8 @@
 
       (switch ?p
          (case 1 then (bind ?action save_loc) (bind $?params (create$ initial_position)))
-         (case 2 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
+         (case 2 then (bind ?action say) (bind $?params (create$ Watch out. I will move forward)))
+         (case 3 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
 
          (default (bind ?next-phase done))
       )
