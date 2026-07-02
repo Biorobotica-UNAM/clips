@@ -92,13 +92,32 @@
    (if (eq ?name NAVIGATE_TO_LAUNDRY) then
 
       (switch ?p
-         (case 1 then (bind ?action say) (bind $?params (create$ request_open_door)))
-         (case 2 then (bind ?action check) (bind $?params (create$ door)))
-         (case 3 then (bind ?action say) (bind $?params (create$ Watch out. I will move forward)))
-         (case 4 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
-         ;(case 4 then (bind ?action say) (bind $?params (create$ move_to_laundry_room)))
-         (case 5 then (bind ?action go_to) (bind $?params (create$ basket)))
-         ;(case 6 then (bind ?action say) (bind $?params (create$ arrived_laundry_room)))
+
+         (case 1 then
+            (bind ?action say)
+            (bind $?params (create$ request_open_door))
+         )
+
+         (case 2 then
+            (bind ?action check)
+            (bind $?params (create$ door))
+         )
+
+         (case 3 then
+            (bind ?action say)
+            (bind $?params (create$ move_to_laundry_room))
+         )
+
+         (case 4 then
+            (bind ?action go_to)
+            (bind $?params (create$ basket))
+         )
+
+         (case 5 then
+            (bind ?action say)
+            (bind $?params (create$ arrived_laundry_room))
+         )
+
          (default
             (bind ?next-phase done)
          )
@@ -117,58 +136,66 @@
          ;; Search clothes
          ;; -------------------------------------------------
 
-         ;(case 1 then
-         ;   (bind ?action say)
-         ;   (bind $?params (create$ announce_find_clothes))
-         ;)
-
          (case 1 then
-            (bind ?action align)
-            (bind $?params (create$ laundry_machine))
+            (bind ?action say)
+            (bind $?params (create$ announce_find_clothes))
          )
 
          (case 2 then
+            (bind ?action align)
+            ;(bind $?params (create$ laundry_machine))
+            (bind $?params (create$ basket))
+         )
+
+         (case 3 then
             (bind ?action find_object)
             (bind $?params (create$ cloth))
          )
 
-         ;(case 4 then
-         :   (bind ?action say)
-         :   (bind $?params (create$ acknowledge_cloth))
-         :)
+         (case 4 then
+            (bind ?action say)
+            (bind $?params (create$ acknowledge_cloth))
+         )
 
          ;(case 5 then
          ;   (bind ?action take)
          ;   (bind $?params (create$ cloth))
          ;)
 
-         (case 3 then
-            (bind ?action say)
-            (bind $?params (create$ Please, place the cloth in my basket))
+         (case 5 then
+            ;(bind ?action say)
+            ;(bind $?params (create$ Please, place the cloth in my basket))
+            (bind ?action take)
+            (bind $?params (create$ cloth))
          )
 
          ;; -------------------------------------------------
          ;; Move cloth to table
          ;; -------------------------------------------------
 
-         ;(case 6 then
-         ;   (bind ?action say)
-         ;   (bind $?params (create$ move_to_table))
-         ;)
+         (case 6 then
+            (bind ?action say)
+            (bind $?params (create$ move_to_table))
+         )
 
-         (case 4 then
+         (case 7 then
             (bind ?action go_to)
             (bind $?params (create$ kitchen_table))
          )
 
-         (case 5 then
+         (case 8 then
             (bind ?action align)
-            (bind $?params (create$ table))
+            (bind $?params (create$ round_table))
          )
 
-         (case 6 then
+         (case 9 then
             (bind ?action drop)
             (bind $?params (create$ cloth))
+         )
+
+         (case 7 then
+            (bind ?action say)
+            (bind $?params (create$ request_spread_shirt_on_table))
          )
 
          (default
