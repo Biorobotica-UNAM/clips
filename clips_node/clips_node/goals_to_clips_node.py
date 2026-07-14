@@ -48,6 +48,7 @@ class GoalParser:
 
         name = match.group(1).strip().lower()
         args, kwargs = self._parse_args(match.group(2))
+        args = self._normalize_goal_args(name, args)
         target = args[0] if args else ""
         return ParsedGoal(name=name, target=target, args=tuple(args), kwargs=kwargs)
 
@@ -76,11 +77,49 @@ class GoalParser:
     def _clean(self, value: str) -> str:
         return value.strip().strip("\"'").replace(" ", "_")
 
+    def _normalize_goal_args(self, name: str, args: List[str]) -> List[str]:
+        if not args:
+            return args
+
+        normalized = self._normalize_talk_target(args[0])
+        if name in {"talk", "answer_question"}:
+            return [normalized, *args[1:]]
+        if name == "tell" and normalized != args[0]:
+            return [normalized, *args[1:]]
+        return args
+
+    def _normalize_talk_target(self, value: str) -> str:
+        text = re.sub(r"[^a-z0-9_]+", " ", value.lower().replace("_", " "))
+        tokens = [("team" if token == "teams" else token) for token in text.split()]
+        token_set = set(tokens)
+
+        if "yourself" in token_set:
+            return "about_yourself"
+        if "time" in token_set:
+            return "current_time"
+        if "country" in token_set and ("team" in token_set or "your" in token_set):
+            return "team_country"
+        if "affiliation" in token_set and ("team" in token_set or "your" in token_set):
+            return "team_affiliation"
+        if "team" in token_set and "name" in token_set:
+            return "team_name"
+        if "day" in token_set and "tomorrow" in token_set:
+            return "day_tomorrow"
+        if "day" in token_set and "today" in token_set:
+            return "day_today"
+        if "day" in token_set and "week" in token_set:
+            return "day_of_week"
+        if "day" in token_set and "month" in token_set:
+            return "day_of_month"
+        return value
+
     def _infer_person_targets(self, goals: List[ParsedGoal]) -> None:
         person_targets = {"person", "me", "user"}
 
         for goal in goals:
             if goal.name in {"follow", "guide", "greet"} and goal.target:
+                person_targets.add(goal.target)
+            if goal.name == "find" and self._looks_like_person_name(goal.target):
                 person_targets.add(goal.target)
             if goal.name == "find" and self._person_qualifier(goal):
                 person_targets.add(goal.target or "person")
@@ -106,6 +145,12 @@ class GoalParser:
     def _person_qualifier(self, goal: ParsedGoal) -> bool:
         kwargs = goal.kwargs or {}
         return any(key in kwargs for key in ("gesture", "pose", "wearing"))
+
+    def _looks_like_person_name(self, target: str) -> bool:
+        if not target or target in {"person", "user", "me", "anybody"}:
+            return False
+        parts = target.replace("_", " ").split()
+        return bool(parts) and all(part[:1].isupper() for part in parts)
 
     def _destination(self, goal: ParsedGoal) -> str:
         kwargs = goal.kwargs or {}
