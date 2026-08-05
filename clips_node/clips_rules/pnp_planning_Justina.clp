@@ -48,10 +48,7 @@
             START_PNP
             NAVIGATE_TO_KITCHEN
             CLEAN_TABLEWARE
-            CLEAN_CUTLERY
-            CLEAN_TRASH
             ORGANIZE_PANTRY
-            SERVE_BREAKFAST
             FINISH_PNP
          )
       )
@@ -91,9 +88,10 @@
       (switch ?p 
          (case 1 then (bind ?action say)   (bind $?params (create$ request_open_door)))
          (case 2 then (bind ?action check) (bind $?params (create$ door)))
-         (case 3 then (bind ?action say) (bind $?params (create$ Watch out. I will move forward)))
+         (case 3 then (bind ?action say) (bind $?params (create$ warning_move)))
          (case 4 then (bind ?action save_loc) (bind $?params (create$ kitchen_bar)))
          (case 5 then (bind ?action go_to)  (bind $?params (create$ kitchen_table)))
+         
          (default
             (bind ?next-phase done))
       )
@@ -105,15 +103,18 @@
 
    (if (eq ?name CLEAN_TABLEWARE) then
       (switch ?p 
-         (case 1  then (bind ?action align) (bind $?params (create$ round)))
+         (case 1  then (bind ?action say) (bind $?params (create$ inform_identify)))
          (case 2  then (bind ?action find_object)  (bind $?params (create$ tableware_1)))
-         (case 3  then (bind ?action find_object)  (bind $?params (create$ tableware_2)))
-         (case 4  then (bind ?action find_object)  (bind $?params (create$ cutlery_1)))
-         (case 5  then (bind ?action find_object)  (bind $?params (create$ trash_1)))
-         (case 6  then (bind ?action take)  (bind $?params (create$ trash_1)))
-         (case 7 then (bind ?action go_to)  (bind $?params (create$ kitchen_trash_bin)))
-         (case 8 then (bind ?action find_space)  (bind $?params (create$ container_down)))
-         (case 9 then (bind ?action drop)  (bind $?params (create$ trash_1)))
+         (case 3  then (bind ?action say)  (bind $?params (create$ acknowledge_tableware_1)))
+         (case 4  then (bind ?action find_object)  (bind $?params (create$ tableware_2)))
+         (case 5  then (bind ?action say)  (bind $?params (create$ acknowledge_tableware_2)))
+         (case 6  then (bind ?action find_object)  (bind $?params (create$ cutlery_1)))
+         (case 7  then (bind ?action say)  (bind $?params (create$ acknowledge_cutlery_1)))
+         (case 8  then (bind ?action find_object)  (bind $?params (create$ fruits_1)))
+         (case 9  then (bind ?action say)  (bind $?params (create$ acknowledge_fruits_1)))
+         (case 10  then (bind ?action go_to)  (bind $?params (create$ cooking_table)))
+         (case 11  then (bind ?action find_object)  (bind $?params (create$ dishwasher_tab_1)))
+         (case 12  then (bind ?action say)  (bind $?params (create$ acknowledge_dishwasher_tab_1)))
 
          (default
             (bind ?next-phase done))
@@ -126,13 +127,13 @@
 
    (if (eq ?name ORGANIZE_PANTRY) then
       (switch ?p 
-         (case 1  then (bind ?action say)   (bind $?params (create$ organize_groceries)))
-         (case 2  then (bind ?action go_to)  (bind $?params (create$ kitchen_table)))
-         (case 3  then (bind ?action align) (bind $?params (create$ round)))
-         (case 4  then (bind ?action find_object)  (bind $?params (create$ groceries_1)))
+         (case 1  then (bind ?action go_to)  (bind $?params (create$ kitchen_table)))
+         (case 2  then (bind ?action say)   (bind $?params (create$ organize_groceries)))
+         (case 3  then (bind ?action find_object)  (bind $?params (create$ groceries_1)))
+         (case 4  then (bind ?action say)  (bind $?params (create$ acknowledge_grocery_1)))
          (case 5  then (bind ?action find_object)  (bind $?params (create$ groceries_2)))
-         (case 6 then (bind ?action go_to)  (bind $?params (create$ cabinet)))
-         (case 7 then (bind ?action align) (bind $?params (create$ table)))
+         (case 6  then (bind ?action say)  (bind $?params (create$ acknowledge_groceries_2)))
+         (case 7 then (bind ?action go_to)  (bind $?params (create$ cabinet)))
          (case 8 then (bind ?action find_space)  (bind $?params (create$ shelf_2)))
 
          (default

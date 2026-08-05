@@ -104,18 +104,8 @@
          )
 
          (case 3 then
-            (bind ?action say)
-            (bind $?params (create$ move_to_laundry_room))
-         )
-
-         (case 4 then
             (bind ?action go_to)
             (bind $?params (create$ basket))
-         )
-
-         (case 5 then
-            (bind ?action say)
-            (bind $?params (create$ arrived_laundry_room))
          )
 
          (default
@@ -143,13 +133,12 @@
 
          (case 2 then
             (bind ?action align)
-            ;(bind $?params (create$ laundry_machine))
             (bind $?params (create$ basket))
          )
 
          (case 3 then
             (bind ?action find_object)
-            (bind $?params (create$ cloth))
+            (bind $?params (create$ fabric_1))
          )
 
          (case 4 then
@@ -157,16 +146,9 @@
             (bind $?params (create$ acknowledge_cloth))
          )
 
-         ;(case 5 then
-         ;   (bind ?action take)
-         ;   (bind $?params (create$ cloth))
-         ;)
-
          (case 5 then
-            ;(bind ?action say)
-            ;(bind $?params (create$ Please, place the cloth in my basket))
             (bind ?action take)
-            (bind $?params (create$ cloth))
+            (bind $?params (create$ fabric_1))
          )
 
          ;; -------------------------------------------------
@@ -180,7 +162,7 @@
 
          (case 7 then
             (bind ?action go_to)
-            (bind $?params (create$ kitchen_table))
+            (bind $?params (create$ laundry_table))
          )
 
          (case 8 then
@@ -189,11 +171,16 @@
          )
 
          (case 9 then
-            (bind ?action drop)
-            (bind $?params (create$ cloth))
+            (bind ?action find_space)
+            (bind $?params (create$ table))
          )
 
-         (case 7 then
+         (case 10 then
+            (bind ?action drop)
+            (bind $?params (create$ table))
+         )
+
+         (case 11 then
             (bind ?action say)
             (bind $?params (create$ request_spread_shirt_on_table))
          )
