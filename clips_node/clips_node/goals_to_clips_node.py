@@ -1,3 +1,18 @@
+"""Conversión de metas semánticas a hechos para el planificador CLIPS.
+
+El nodo recibe un JSON con metas escritas como ``accion(argumentos)``. Primero
+las parsea y normaliza, después infiere el tipo de cada objetivo y finalmente
+construye hechos ``gpsr-goal`` compatibles con ``goals_planning.clp``.
+
+Flujo completo::
+
+    JSON -> ParsedGoal -> (gpsr-goal ...) -> assert_facts_batch -> start_planning
+
+El envío por lote reinicia la memoria de trabajo de CLIPS. La llamada posterior
+a ``start_planning`` agrega el hecho disparador que comienza la expansión de
+las metas en acciones para el robot.
+"""
+
 import json
 import re
 import shlex
@@ -16,6 +31,13 @@ from std_srvs.srv import Trigger
 
 @dataclass
 class ParsedGoal:
+    """Representación intermedia de una meta antes de convertirla a CLIPS.
+
+    ``args`` conserva los argumentos posicionales y ``kwargs`` los argumentos
+    con nombre. ``kind`` se calcula después de parsear todas las metas, porque
+    su valor puede depender del contexto completo del plan.
+    """
+
     name: str
     target: str = ""
     args: Tuple[str, ...] = ()
@@ -24,9 +46,18 @@ class ParsedGoal:
 
 
 class GoalParser:
+    """Parsea, normaliza y clasifica las metas recibidas en el JSON."""
+
     _GOAL_RE = re.compile(r"^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\((.*)\)\s*$")
 
     def parse_many(self, payload: str) -> List[ParsedGoal]:
+        """Convierte un arreglo JSON, o ``{"goals": [...]}``, en metas.
+
+        Las reparaciones se aplican antes de inferir ``kind`` para que la
+        clasificación se realice sobre la secuencia que realmente recibirá
+        CLIPS y no sobre la salida posiblemente defectuosa del modelo.
+        """
+
         data = json.loads(payload)
         if isinstance(data, dict):
             raw_goals = data.get("goals", [])
@@ -42,6 +73,8 @@ class GoalParser:
         return goals
 
     def parse_one(self, raw_goal: str) -> ParsedGoal:
+        """Parsea una expresión individual con forma ``nombre(argumentos)``."""
+
         match = self._GOAL_RE.match(raw_goal)
         if not match:
             raise ValueError(f"invalid goal syntax: {raw_goal}")
@@ -53,6 +86,8 @@ class GoalParser:
         return ParsedGoal(name=name, target=target, args=tuple(args), kwargs=kwargs)
 
     def _parse_args(self, body: str) -> Tuple[List[str], Dict[str, str]]:
+        """Separa argumentos posicionales de argumentos ``clave=valor``."""
+
         args: List[str] = []
         kwargs: Dict[str, str] = {}
 
@@ -68,6 +103,8 @@ class GoalParser:
         return args, kwargs
 
     def _split_top_level(self, body: str) -> List[str]:
+        """Divide por comas respetando valores encerrados entre comillas."""
+
         lexer = shlex.shlex(body, posix=True)
         lexer.whitespace = ","
         lexer.whitespace_split = True
@@ -75,9 +112,13 @@ class GoalParser:
         return [token.strip() for token in lexer]
 
     def _clean(self, value: str) -> str:
+        """Limpia comillas externas y adapta espacios al formato del executor."""
+
         return value.strip().strip("\"'").replace(" ", "_")
 
     def _normalize_goal_args(self, name: str, args: List[str]) -> List[str]:
+        """Normaliza conceptos de conversación que tienen una respuesta fija."""
+
         if not args:
             return args
 
@@ -89,6 +130,8 @@ class GoalParser:
         return args
 
     def _normalize_talk_target(self, value: str) -> str:
+        """Traduce preguntas frecuentes a las claves usadas por las reglas."""
+
         text = re.sub(r"[^a-z0-9_]+", " ", value.lower().replace("_", " "))
         tokens = [("team" if token == "teams" else token) for token in text.split()]
         token_set = set(tokens)
@@ -114,6 +157,13 @@ class GoalParser:
         return value
 
     def _infer_person_targets(self, goals: List[ParsedGoal]) -> None:
+        """Infiere ``kind`` usando tanto la meta como el resto del plan.
+
+        Por ejemplo, si una meta entrega un objeto a Laura, cualquier
+        ``find(Laura)`` del mismo plan debe interpretarse como búsqueda de una
+        persona aunque no incluya un atributo visual explícito.
+        """
+
         person_targets = {"person", "me", "user"}
 
         for goal in goals:
@@ -157,6 +207,14 @@ class GoalParser:
         return kwargs.get("to") or (goal.args[1] if len(goal.args) > 1 else "")
 
     def _repair_malformed_goals(self, goals: List[ParsedGoal]) -> List[ParsedGoal]:
+        """Repara el patrón erróneo ``go(person)`` producido por el LLM.
+
+        Un ``go`` cuyo objetivo es una persona se convierte en ``find``. Si a
+        continuación existe un ``follow`` de esa misma persona hacia un lugar,
+        el destino se adelanta como una meta ``go`` y se elimina del ``follow``
+        para no ejecutar el desplazamiento dos veces.
+        """
+
         repaired: List[ParsedGoal] = []
         index = 0
 
@@ -231,26 +289,42 @@ class GoalParser:
         return (goal.target or "person") == (find_goal.target or "person")
 
     def _follow_without_destination(self, goal: ParsedGoal) -> ParsedGoal:
+        """Copia un ``follow`` retirando su destino nominal o posicional."""
+
         kwargs = {
             key: value
             for key, value in (goal.kwargs or {}).items()
             if key != "to"
         }
+        args = goal.args[:1] if len(goal.args) > 1 else goal.args
         return ParsedGoal(
             name=goal.name,
             target=goal.target,
-            args=goal.args,
+            args=args,
             kwargs=kwargs,
         )
 
 
 class ClipsGoalFactBuilder:
+    """Serializa ``ParsedGoal`` como hechos del template ``gpsr-goal``.
+
+    Los valores de texto se escriben como strings CLIPS escapados. ``name`` y
+    ``kind`` se escriben como símbolos porque las reglas comparan esos slots
+    con símbolos como ``follow``, ``person`` u ``object``.
+    """
+
     _KNOWN_FIELDS = ("to", "on", "in", "gesture", "pose", "wearing", "property")
+    _POSITIONAL_DESTINATION_GOALS = {"deliver", "guide", "follow", "place", "drop"}
+    _POSITIONAL_TO_GOALS = {"deliver", "guide", "follow"}
 
     def build(self, goals: List[ParsedGoal]) -> List[str]:
+        """Construye un hecho por meta asignando pasos consecutivos desde 1."""
+
         return [self._build_goal_fact(step, goal) for step, goal in enumerate(goals, start=1)]
 
     def _build_goal_fact(self, step: int, goal: ParsedGoal) -> str:
+        """Construye la representación textual que acepta ``assert_string``."""
+
         kwargs = goal.kwargs or {}
         relation, value = self._primary_relation(goal)
         slots = {
@@ -276,15 +350,27 @@ class ClipsGoalFactBuilder:
         )
 
     def _primary_relation(self, goal: ParsedGoal) -> Tuple[str, str]:
+        """Obtiene la relación principal que CLIPS usará como contexto.
+
+        Los argumentos con nombre tienen prioridad. Para acciones dirigidas a
+        una persona o lugar, el segundo argumento posicional equivale a ``to``.
+        """
+
         kwargs = goal.kwargs or {}
         for key in self._KNOWN_FIELDS:
             if key in kwargs:
                 return key, kwargs[key]
-        if goal.name == "deliver" and len(goal.args) > 1:
+        if goal.name in self._POSITIONAL_TO_GOALS and len(goal.args) > 1:
             return "to", goal.args[1]
         return "", ""
 
     def _destination(self, goal: ParsedGoal) -> str:
+        """Obtiene el destino nominal o el segundo argumento posicional.
+
+        Se aceptan ambas formas, por ejemplo ``follow(person, to=kitchen)`` y
+        ``follow(person, kitchen)``.
+        """
+
         kwargs = goal.kwargs or {}
         if "to" in kwargs:
             return kwargs["to"]
@@ -292,22 +378,34 @@ class ClipsGoalFactBuilder:
             return kwargs["on"]
         if "in" in kwargs:
             return kwargs["in"]
-        if goal.name == "deliver" and len(goal.args) > 1:
+        if goal.name in self._POSITIONAL_DESTINATION_GOALS and len(goal.args) > 1:
             return goal.args[1]
         return ""
 
     def _first_present(self, kwargs: Dict[str, str], keys: Tuple[str, ...]) -> str:
+        """Codifica el primer atributo visual como ``clave:valor``."""
+
         for key in keys:
             if key in kwargs:
                 return f"{key}:{kwargs[key]}"
         return ""
 
     def _q(self, value: str) -> str:
+        """Escapa un valor para insertarlo de forma segura como string CLIPS."""
+
         escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
         return f'"{escaped}"'
 
 
 class GoalsToClipsNode(Node):
+    """Servicio ROS 2 que conecta la salida semántica con el nodo CLIPS.
+
+    Se utiliza un nodo cliente con executor propio porque el callback de
+    conversión espera las respuestas de otros servicios. Si esos clientes se
+    atendieran en el mismo executor bloqueado por el callback, se produciría un
+    interbloqueo.
+    """
+
     def __init__(self) -> None:
         super().__init__("goals_to_clips")
         self._parser = GoalParser()
@@ -319,6 +417,8 @@ class GoalsToClipsNode(Node):
             self._handle_convert,
         )
 
+        # Nodo auxiliar dedicado exclusivamente a procesar las respuestas de
+        # assert_facts_batch y start_planning mientras este nodo atiende convert.
         self._client_node = rclpy.create_node(
             "goals_to_clips_clients",
             namespace=self.get_namespace(),
@@ -342,6 +442,8 @@ class GoalsToClipsNode(Node):
         self.get_logger().info("Goals_to_clips node ready.")
 
     def _handle_convert(self, request: StringSrv.Request, response: StringSrv.Response) -> StringSrv.Response:
+        """Convierte el JSON, envía los hechos y solicita iniciar el plan."""
+
         try:
             goals = self._parser.parse_many(request.data)
             if not goals:
@@ -369,6 +471,8 @@ class GoalsToClipsNode(Node):
             return response
 
     def _assert_facts(self, facts: List[str]) -> bool:
+        """Envía todos los hechos juntos para crear un contexto CLIPS limpio."""
+
         if not self._assert_client.wait_for_service(timeout_sec=3.0):
             self.get_logger().error("assert_facts_batch service not available.")
             return False
@@ -378,6 +482,8 @@ class GoalsToClipsNode(Node):
         return self._wait_future(future, timeout_sec=5.0) and future.result().successful
 
     def _trigger_planning(self) -> bool:
+        """Solicita insertar el hecho ``(start (name action-planning))``."""
+
         if not self._planning_client.wait_for_service(timeout_sec=3.0):
             self.get_logger().error("start_planning service not available.")
             return False
@@ -385,12 +491,16 @@ class GoalsToClipsNode(Node):
         return self._wait_future(future, timeout_sec=5.0) and future.result().success
 
     def _wait_future(self, future, timeout_sec: float) -> bool:
+        """Espera una respuesta sin depender del executor del nodo servidor."""
+
         deadline = time.monotonic() + timeout_sec
         while rclpy.ok() and not future.done() and time.monotonic() < deadline:
             time.sleep(0.01)
         return future.done() and future.result() is not None
 
     def destroy_node(self) -> None:
+        """Detiene el executor auxiliar antes de destruir ambos nodos."""
+
         self._client_executor.shutdown()
         self._client_thread.join(timeout=1.0)
         self._client_node.destroy_node()

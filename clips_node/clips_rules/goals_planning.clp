@@ -92,7 +92,7 @@
 ;   TRUE  -> genera flujo real de manipulacion: take/place/drop/give
 ;   FALSE -> modo seguro: dice que por el momento no puede tomar objetos
 ; ==============================================================
-(defglobal ?*MANIPULATION_ENABLED* = FALSE)
+(defglobal ?*MANIPULATION_ENABLED* = TRUE)
 
 (deftemplate manipulation-mode
   (slot enabled))
