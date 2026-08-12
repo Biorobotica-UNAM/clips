@@ -34,6 +34,13 @@ Dependencia Conceptual (`primitive_to_clips` y `gpsr_planning.clp`) y varios
 planes fijos. Esos componentes no forman parte del modo `goals` habilitado por
 defecto.
 
+## Documentación técnica
+
+La explicación completa de los templates, funciones, saliences, transiciones
+de estado y reglas individuales de `goals_planning.clp` está disponible en:
+
+- [Guía detallada de `goals_planning.clp`](docs/goals_planning_rules.md)
+
 ## Componentes principales
 
 | Componente | Responsabilidad |
