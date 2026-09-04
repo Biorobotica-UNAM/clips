@@ -92,7 +92,7 @@
 ;   TRUE  -> genera flujo real de manipulacion: take/place/drop/give
 ;   FALSE -> modo seguro: dice que por el momento no puede tomar objetos
 ; ==============================================================
-(defglobal ?*MANIPULATION_ENABLED* = FALSE)
+(defglobal ?*MANIPULATION_ENABLED* = TRUE)
 
 (deftemplate manipulation-mode
   (slot enabled))
@@ -409,7 +409,7 @@
 (deffunction destination-phrase (?relation ?destination)
   (if (eq ?destination "") then
     (return ""))
-  (if (or (eq ?relation "in") (eq ?relation "on") (eq ?relation "to")) then
+  (if (or (eq ?relation "at") (eq ?relation "in") (eq ?relation "on") (eq ?relation "to")) then
     (return (str-cat " " ?relation " " ?destination)))
   (if (or (contains-text ?destination "container")
           (contains-text ?destination "trash")

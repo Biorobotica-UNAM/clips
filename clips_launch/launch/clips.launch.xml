@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     
-    <arg name="plan_name" default="hri"/>
-    <arg name="use_goals_to_clips" default="false"/>
+    <arg name="plan_name" default="goals"/>
+    <arg name="use_goals_to_clips" default="true"/>
     <arg name="clips_output" default="screen"/>
 
     <!-- Nodo CLIPS (Python) - Sistema de planificación -->
