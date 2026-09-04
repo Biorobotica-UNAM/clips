@@ -313,7 +313,7 @@ class ClipsGoalFactBuilder:
     con símbolos como ``follow``, ``person`` u ``object``.
     """
 
-    _KNOWN_FIELDS = ("to", "on", "in", "gesture", "pose", "wearing", "property")
+    _KNOWN_FIELDS = ("to", "at", "on", "in", "gesture", "pose", "wearing", "property")
     _POSITIONAL_DESTINATION_GOALS = {"deliver", "guide", "follow", "place", "drop"}
     _POSITIONAL_TO_GOALS = {"deliver", "guide", "follow"}
 
@@ -372,12 +372,9 @@ class ClipsGoalFactBuilder:
         """
 
         kwargs = goal.kwargs or {}
-        if "to" in kwargs:
-            return kwargs["to"]
-        if "on" in kwargs:
-            return kwargs["on"]
-        if "in" in kwargs:
-            return kwargs["in"]
+        for key in ("to", "at", "on", "in"):
+            if key in kwargs:
+                return kwargs[key]
         if goal.name in self._POSITIONAL_DESTINATION_GOALS and len(goal.args) > 1:
             return goal.args[1]
         return ""

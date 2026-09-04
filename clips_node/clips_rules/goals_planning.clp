@@ -409,7 +409,7 @@
 (deffunction destination-phrase (?relation ?destination)
   (if (eq ?destination "") then
     (return ""))
-  (if (or (eq ?relation "in") (eq ?relation "on") (eq ?relation "to")) then
+  (if (or (eq ?relation "at") (eq ?relation "in") (eq ?relation "on") (eq ?relation "to")) then
     (return (str-cat " " ?relation " " ?destination)))
   (if (or (contains-text ?destination "container")
           (contains-text ?destination "trash")
