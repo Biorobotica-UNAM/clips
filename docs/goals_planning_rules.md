@@ -400,7 +400,7 @@ confirmación del subsistema HRI.
 que un target es persona si:
 
 - aparece como target de `guide`, `follow`, `greet`, `meet` o `introduce`;
-- aparece como destinatario de `talk`, `tell`, `ask` o `answer`;
+- aparece como destinatario de `tell`, `ask` o `answer`;
 - aparece codificado en un qualifier con formas como `to=Laura`, `to:Laura`,
   `person=Laura` o variantes con espacio/guion bajo.
 
@@ -411,7 +411,7 @@ La función `recipient-mentions-target` implementa la búsqueda de las distintas
 formas textuales del destinatario dentro de un valor o qualifier.
 
 `next-goal-name` y `next-goal-is-talk` localizan la siguiente meta. Se usan para
-decidir si una búsqueda nombrada debe conservar el foco para un `talk` o `tell`
+decidir si una búsqueda nombrada debe conservar el foco para un `tell`
 inmediato.
 
 ### Destinos y superficies
@@ -609,7 +609,7 @@ say ask_name
 listen guest_name_last
 focus enable
 say acknowledge_name_last
-focus disable, excepto si la siguiente meta es talk/tell
+focus disable, excepto si la siguiente meta es tell
 ```
 
 También registra:
@@ -691,7 +691,7 @@ Para `biggest` o `smallest`, el análisis sustituye `find_object`. Si el
 qualifier no produce una consulta válida, la regla conserva `find_object` como
 fallback.
 
-### Manipulación: `take`, `place`, `drop` y `deliver`
+### Manipulación: `take`, `place` y `deliver`
 
 #### `process-take-enabled`
 
@@ -731,7 +731,7 @@ que dependan del mismo objeto.
 
 **Salience:** 196.
 
-Procesa `place` o `drop` cuando existe `manipulation-unavailable` para el
+Procesa `place` cuando existe `manipulation-unavailable` para el
 objeto. Puede conservar la navegación hacia un destino nombrado, pero sustituye
 la manipulación por una explicación hablada.
 
@@ -739,8 +739,8 @@ la manipulación por una explicación hablada.
 
 **Salience:** 195.
 
-Es el fallback general para `deliver`, `place` o `drop` después de un `take`
-no disponible. La regla especializada anterior gana para `place/drop`; ésta es
+Es el fallback general para `deliver` o `place` después de un `take`
+no disponible. La regla especializada anterior gana para `place`; ésta es
 especialmente relevante para `deliver`.
 
 #### `process-place-drop-not-carrying`
@@ -898,7 +898,7 @@ Actualiza `location` a `instruction_point` y conserva `holding`.
 
 #### `process-tell`
 
-Procesa tanto `tell` como `talk`.
+Procesa `tell`.
 
 La selección de salida sigue este orden:
 
@@ -919,7 +919,7 @@ La acción final sigue otra decisión:
 Ejemplos:
 
 ```text
-talk(team_name)
+tell(team_name)
 → focus enable
 → say team_name
 → focus disable
@@ -1203,7 +1203,7 @@ ejecutar `find_person`.
 Entrada:
 
 ```json
-{"goals": ["talk(what is your team name)"]}
+{"goals": ["tell(what is your team name)"]}
 ```
 
 El adaptador normaliza el target a `team_name`. El plan es:
@@ -1231,7 +1231,7 @@ supervisión de errores durante la ejecución pertenece a otro nivel del sistema
 
 ### No todas las reglas actualizan ubicación
 
-- `go`, `guide`, `count`, `place`, `drop` y `deliver-to-user` sí la actualizan;
+- `go`, `guide`, `count`, `place` y `deliver-to-user` sí la actualizan;
 - `find`, `take`, `tell`, `save`, `greet` y `deliver-to-person` la conservan;
 - `follow` no consulta ni modifica `current-state`.
 
@@ -1257,7 +1257,7 @@ el estado solicitado.
 
 ### La entrega supone una secuencia coherente
 
-Las reglas de `place` y `drop` exigen que `holding` coincida con el objeto.
+Las reglas de `place` exigen que `holding` coincida con el objeto.
 `deliver` no impone directamente esa condición. El generador de metas debe
 producir normalmente `take(obj)` antes de `deliver(obj, persona)`.
 

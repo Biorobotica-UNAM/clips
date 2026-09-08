@@ -196,7 +196,7 @@ inspection point → inspection_point
 
 ### Destinos
 
-`deliver`, `guide`, `follow`, `place` y `drop` aceptan tanto destinos nominales
+`deliver`, `guide`, `follow` y `place` aceptan tanto destinos nominales
 como un segundo argumento posicional:
 
 ```text
@@ -211,9 +211,6 @@ follow(Matthew, to=kitchen)
 
 place(cup, on=table)
 place(cup, table)
-
-drop(trash, in=bin)
-drop(trash, bin)
 ```
 
 Si `follow` no tiene destino, se conserva vacío:
@@ -232,7 +229,6 @@ argumento se interpreta como la relación `to`.
 |---|---|---|
 | `to` | `follow(person, to=sofa)` | Destinatario o destino |
 | `on` | `place(cup, on=table)` | Superficie de colocación |
-| `in` | `drop(trash, in=bin)` | Contenedor de colocación |
 | `gesture` | `find(person, gesture=waving)` | Búsqueda visual por gesto |
 | `pose` | `find(person, pose=sitting)` | Búsqueda visual por pose |
 | `wearing` | `find(person, wearing=red shirt)` | Búsqueda visual por vestimenta |
@@ -410,12 +406,11 @@ Cada regla retira el `gpsr-goal` procesado y agrega uno o más `action-step`.
 | `find(persona)` | `find_person` o `find_pose`, `approach`, `focus` |
 | `take(objeto)` | `take`, si la manipulación está habilitada |
 | `place(objeto, destino)` | navegación opcional, `find_space`, `drop` |
-| `drop(objeto, destino)` | navegación opcional, `find_space`, `drop` |
 | `deliver(objeto, persona)` | localización del destinatario, `approach`, `give` |
 | `guide(persona, destino)` | aviso, `go_to`, confirmación |
 | `follow(persona, destino)` | localización, aproximación e instrucciones de seguimiento |
 | `count(target)` | `analyze_objects`, regreso y reporte |
-| `tell(info)` / `talk(info)` | selección y reproducción de una respuesta |
+| `tell(info)` | selección y reproducción de una respuesta |
 | `save(info)` | captura de nombre, pose o gesto |
 | `answer_question()` | `listen` y `say` |
 | `greet(persona)` | localización, aproximación y saludo |
