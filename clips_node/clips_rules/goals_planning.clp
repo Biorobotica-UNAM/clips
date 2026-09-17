@@ -865,8 +865,8 @@
   (bind ?desc (describe-target ?target ?qualifier))
   (bind ?spoken-desc (spoken-target ?target ?qualifier))
   (append-say (str-cat "I will search for " ?spoken-desc))
-  ;(if (table-support ?loc) then
-  ;  (append-action align "table"))
+  (if (table-support ?loc) then
+    (append-action align "table"))
   (bind ?analysis "")
   (bind ?answer "")
   (if (neq ?qualifier "") then
