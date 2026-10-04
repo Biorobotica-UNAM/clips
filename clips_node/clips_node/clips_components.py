@@ -2,7 +2,7 @@
 Supporting components for the CLIPS planning node.
 
 Classes:
-    RuleLoader    — finds and loads rules from rules_list.dat
+    RuleLoader    — finds and loads rules selected by plan_name
     PlanExtractor — reads ros-message facts and builds the plan
 
 Design principles applied:
@@ -28,22 +28,7 @@ from clips_node.clips_engine import ClipsEngine
 
 
 class RuleLoader:
-    """
-    Finds and loads CLIPS rule files from rules_list.dat.
-
-    Responsibility: locate the rules_list.dat file in the
-    workspace and load each enabled rule file into the engine.
-
-    Lines starting with '#' are treated as comments and skipped.
-    Relative paths in rules_list.dat are resolved relative to
-    the directory containing the .dat file itself.
-
-    Search paths for rules_list.dat (in order):
-      1. <cwd>/clips/clips_node/clips_rules/rules_list.dat
-      2. <cwd>/src/Planning/clips/clips_node/clips_rules/rules_list.dat
-    """
-
-    _DAT_FILENAME = "rules_list.dat"
+    """Find and load .clp files matching plan_name in workspace rule directories."""
 
     _SEARCH_PATHS: Tuple[Path, ...] = (
         Path("clips") / "clips_node" / "clips_rules",
@@ -58,7 +43,7 @@ class RuleLoader:
 
     def load(self) -> bool:
         """
-        Find rules_list.dat and load all enabled rule files.
+        Find and load rule files selected by plan_name.
 
         Returns:
             True if rules were loaded successfully, False otherwise.
@@ -113,31 +98,6 @@ class RuleLoader:
                         matching_files.append(file_path)
 
         return matching_files
-
-    def _parse_dat_file(self, dat_path: Path) -> List[Path]:
-        """
-        Read rules_list.dat and return absolute paths of enabled files.
-
-        Skips empty lines and lines starting with '#'.
-        Resolves relative paths relative to the .dat file's directory.
-        """
-        rule_files = []
-        rules_dir = dat_path.parent
-
-        with open(dat_path, "r", encoding="utf-8") as f:
-            for line in f:
-                clp_path = line.strip()
-                if not clp_path or clp_path.startswith("#"):
-                    continue
-                resolved = Path(clp_path)
-                if not resolved.is_absolute():
-                    resolved = rules_dir / resolved
-                if resolved.exists():
-                    rule_files.append(resolved)
-                else:
-                    self._log_error(f"Rule file not found: {resolved}")
-
-        return rule_files
 
     def _log_info(self, message: str) -> None:
         if self._logger:

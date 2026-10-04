@@ -29,10 +29,9 @@ clips_node.py
   ordena, publica /clips/results y escribe el log
 ```
 
-El repositorio conserva también el flujo anterior basado en primitivas de
-Dependencia Conceptual (`primitive_to_clips` y `gpsr_planning.clp`) y varios
-planes fijos. Esos componentes no forman parte del modo `goals` habilitado por
-defecto.
+El repositorio conserva varios planes fijos seleccionables mediante
+`plan_name`. El flujo anterior basado en primitivas de Dependencia Conceptual
+fue retirado; el flujo actual utiliza metas JSON.
 
 ## Documentación técnica
 
@@ -67,11 +66,9 @@ clips/
 │   │   └── clips_components.py
 │   └── clips_rules/
 │       ├── goals_planning.clp
-│       ├── gpsr_planning.clp
 │       ├── hri_planning.clp
 │       └── ...
 ├── plan_manager_node/
-├── primitive_to_clips/
 └── README.md
 ```
 
@@ -96,9 +93,7 @@ El cargador busca archivos `.clp` cuyo nombre coincida con `plan_name`. Para
 `plan_name=goals` carga `goals_planning.clp`. Los archivos encontrados se
 ordenan antes de cargarse para que el resultado sea reproducible.
 
-> `rules_list.dat` pertenece al flujo anterior. El `RuleLoader` actual
-> selecciona reglas mediante el parámetro `plan_name`; no es necesario editar
-> `rules_list.dat` para usar `goals_planning.clp`.
+El `RuleLoader` selecciona reglas mediante el parámetro `plan_name`.
 
 Para seleccionar un plan fijo y no iniciar el conversor de metas:
 
@@ -743,3 +738,29 @@ Para agregar una meta nueva:
 
 Las nuevas acciones deben usar los nombres y parámetros que entienda el
 executor del robot.
+
+
+## Nota de limpieza del flujo actual
+
+Se retiraron los componentes del flujo anterior que no participan en
+comando → metas JSON → hechos `gpsr-goal` → plan:
+
+- El paquete y nodo `primitive_to_clips` y sus reglas `gpsr_planning.clp`.
+- El nodo `natural_to_clips` y su registro como ejecutable.
+- El respaldo `clips_node_backup.py`.
+- `rules_list.dat`, el método `_parse_dat_file` y la constante `_DAT_FILENAME`.
+
+También se eliminaron la dependencia y el bloque comentado de launch del nodo
+antiguo, así como los métodos `interpretToClips` y `primitiveToClips` y sus
+clientes en `planning_tools`. La GUI ahora espera `goals_to_clips_node`.
+Los consumidores externos de esos métodos deben migrar a `goalsToClips`.
+
+Se conservan `clips_node`, `goals_to_clips_node`, `clips_engine`,
+`clips_components`, `goals_planning.clp`, `clips_launch` y `plan_manager_node`.
+Los planes fijos se mantienen porque siguen disponibles en la GUI y mediante
+`plan_name`.
+
+Tras la limpieza, recompilar los paquetes afectados y volver a cargar
+`install/setup.bash`. Los artefactos de compilaciones anteriores en `build/`
+e `install/` no forman parte de esta limpieza de fuentes y pueden conservar
+copias de los ejecutables retirados hasta limpiar o renovar esos artefactos.

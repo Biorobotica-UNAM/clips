@@ -179,7 +179,7 @@ class ClipsNode(Node):
         if not success:
             self.get_logger().error(
                 "Failed to load CLIPS rules. "
-                "Check rules_list.dat and workspace paths."
+                "Check plan_name and workspace rule paths."
             )
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -214,10 +214,9 @@ class ClipsNode(Node):
 
     def _handle_start_planning(self, request, response):
         """
-        Reset CLIPS and start a new planning cycle.
+        Start planning after goals_to_clips has asserted the goal facts.
 
-        Called by primitive_to_clips after asserting all facts.
-        Inserts the (start ...) trigger that activates gpsr-initialize.
+        Inserts the (start ...) trigger that activates goals-initialize.
         """
 
         def task():

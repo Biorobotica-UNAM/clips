@@ -4,7 +4,7 @@
 ;; Entrada esperada:
 ;;   (gpsr-goal (step 1) (name go) (target "kitchen") ...)
 ;;
-;; Este archivo mantiene el mismo contrato de salida que gpsr_planning.clp:
+;; Este archivo genera el contrato de salida del planificador:
 ;;   plan-note   -> ==Justina GPSR_START/DONE==
 ;;   ros-message -> Paso N: Justina <accion> <parametros>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
