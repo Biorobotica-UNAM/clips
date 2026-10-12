@@ -100,7 +100,18 @@
 (deftemplate action-step
   (slot step (type INTEGER))
   (slot action)
+  (slot arg (default ""))
+  (slot interlocutor (default "")))
+
+(deftemplate interaction-context
+  (slot interlocutor (default "")))
+
+(deftemplate finalized-step
+  (slot step (type INTEGER))
+  (slot action)
   (slot arg (default "")))
+
+(deftemplate focus-normalized)
 
 (deftemplate say-counter
   (slot value (type INTEGER)))
@@ -141,8 +152,6 @@
   (slot source)
   (slot guest-index (default ""))
   (slot customer-index (default "")))
-
-(deftemplate focus-active)
 
 (deftemplate final-steps-added)
 
@@ -212,17 +221,28 @@
     (retract (nth$ 1 ?facts))
     (bind ?facts (find-all-facts ((?lp last-person-context)) TRUE))))
 
-(deffunction clear-focus-active ()
-  (bind ?facts (find-all-facts ((?fa focus-active)) TRUE))
-  (while (> (length$ ?facts) 0) do
-    (retract (nth$ 1 ?facts))
-    (bind ?facts (find-all-facts ((?fa focus-active)) TRUE))))
+(deffunction set-interlocutor (?identity)
+  (bind ?contexts (find-all-facts ((?ctx interaction-context)) TRUE))
+  (if (> (length$ ?contexts) 0) then
+    (modify (nth$ 1 ?contexts) (interlocutor ?identity))
+    else
+    (assert (interaction-context (interlocutor ?identity)))))
 
-(deffunction focus-is-active ()
-  (bind ?facts (find-all-facts ((?fa focus-active)) TRUE))
-  (return (> (length$ ?facts) 0)))
+(deffunction current-interlocutor ()
+  (bind ?facts (find-all-facts ((?ctx interaction-context)) TRUE))
+  (if (> (length$ ?facts) 0) then
+    (return (fact-slot-value (nth$ 1 ?facts) interlocutor)))
+  (return ""))
+
+(deffunction select-person (?target)
+  (bind ?facts (find-all-facts ((?vp visual-person-found)) (eq ?vp:target ?target)))
+  (if (> (length$ ?facts) 0) then
+    (set-interlocutor (str-cat ?target "|" (fact-slot-value (nth$ 1 ?facts) source)))
+    else
+    (set-interlocutor "")))
 
 (deffunction remember-last-person (?target ?source ?guest-index ?customer-index)
+  (set-interlocutor (str-cat ?target "|" ?source))
   (clear-last-person-context)
   (assert (last-person-context
     (target ?target)
@@ -672,33 +692,63 @@
   (return ""))
 
 (deffunction append-action (?action ?arg)
+  ; Focus is generated only by the final interaction pass, not by goal rules.
+  (if (eq ?action focus) then (return FALSE))
+  (if (eq ?action go_to) then
+    (if (eq ?arg "instruction_point") then
+      (set-interlocutor "operator|host_1")
+      else (set-interlocutor "")))
+  (if (or (eq ?action find_person) (eq ?action find_pose) (eq ?action approach)) then
+    (set-interlocutor "")
+    (if (and (eq ?action approach) (eq ?arg "host_1")) then
+      (set-interlocutor "operator|host_1")))
   (bind ?facts (find-all-facts ((?ac act-counter)) TRUE))
   (bind ?counter (nth$ 1 ?facts))
   (bind ?step (fact-slot-value ?counter value))
   (retract ?counter)
   (assert (act-counter (value (+ ?step 1))))
-  (if (eq ?action focus) then
-    (if (eq ?arg "enable") then
-      (clear-focus-active)
-      (assert (focus-active))
-      else
-      (if (eq ?arg "disable") then
-        (clear-focus-active))))
   (assert (action-step (step ?step) (action ?action) (arg ?arg))))
 
+(deffunction append-dialogue (?action ?arg)
+  (bind ?step (append-action ?action ?arg))
+  (modify ?step (interlocutor (current-interlocutor))))
+
 (deffunction append-focused-say (?answer)
-  (bind ?needs-focus (answer-releases-focus ?answer))
+  (append-dialogue say ?answer))
 
-  ; Si la frase necesita foco y aun no esta activo, lo activa.
-  ; Si ya venia activo desde una regla anterior, evita repetir focus enable.
-  (if (and ?needs-focus (not (focus-is-active))) then
-    (append-action focus "enable"))
+; Single authority for focus: preserve task actions, group only adjacent dialogue
+; directed to the same identity. General announcements and other actions end it.
+(deffunction action-step-after (?left ?right)
+  (return (> (fact-slot-value ?left step) (fact-slot-value ?right step))))
 
-  (append-action say ?answer)
-
-  ; Despues de una respuesta final, libera el foco.
-  (if ?needs-focus then
-    (append-action focus "disable")))
+(deffunction normalize-interactions ()
+  (bind ?steps (sort action-step-after (find-all-facts ((?s action-step)) TRUE)))
+  (bind ?active "")
+  (bind ?next 1001)
+  (progn$ (?s ?steps)
+    (bind ?step (fact-slot-value ?s step))
+    (bind ?action (fact-slot-value ?s action))
+    (bind ?arg (fact-slot-value ?s arg))
+    (bind ?audience (fact-slot-value ?s interlocutor))
+    (if (< ?step 1001) then
+      (assert (finalized-step (step ?step) (action ?action) (arg ?arg)))
+      else
+      (if (neq ?action focus) then
+        (if (not (or (eq ?action say) (eq ?action listen))) then (bind ?audience ""))
+        (if (and (neq ?active "") (neq ?active ?audience)) then
+          (assert (finalized-step (step ?next) (action focus) (arg "disable")))
+          (bind ?next (+ ?next 1))
+          (bind ?active ""))
+        (if (and (neq ?audience "") (neq ?active ?audience)) then
+          (assert (finalized-step (step ?next) (action focus) (arg "enable")))
+          (bind ?next (+ ?next 1))
+          (bind ?active ?audience))
+        (assert (finalized-step (step ?next) (action ?action) (arg ?arg)))
+        (bind ?next (+ ?next 1))))
+    (retract ?s))
+  (if (neq ?active "") then
+    (assert (finalized-step (step ?next) (action focus) (arg "disable"))))
+  (assert (focus-normalized)))
 
 ; Drop consume object_id para seleccionar mano y el ultimo safe_drop_1 guardado
 ; por FindSpace. Floor es la excepcion: no necesita FindSpace.
@@ -730,6 +780,8 @@
   (assert (person-counter (value 1)))
   (assert (guest-counter (value 1)))
   (assert (customer-counter (value 1)))
+  ; The operator is the initial interlocutor, until navigation or a new search.
+  (set-interlocutor "operator|host_1")
   ; Si nadie configuro el modo antes de planear, usar la variable global de arriba.
   ; Para cambiar el default, edita: ?*MANIPULATION_ENABLED* = TRUE/FALSE
   ; Tambien se puede sobrescribir en runtime con: (set-manipulation-enabled TRUE/FALSE)
@@ -773,8 +825,7 @@
     else
     (append-action find_person "anybody")
     (assert (visual-person-found (target ?target) (source "guest_last")))
-    (remember-last-person ?target "guest_last" "last" ""))
-  (append-action focus "enable"))
+    (remember-last-person ?target "guest_last" "last" "")))
 
 (defrule process-find-named-person
   (declare (salience 195))
@@ -795,12 +846,10 @@
   (remember-last-person ?target "guest_last" "last" "")
   ; La arena no garantiza rostros conocidos: se captura la cara anonima y el
   ; runtime resuelve guest_name_last al guest_N real reportado por find_person.
-  (append-action say "ask_name")
-  (append-action listen "guest_name_last")
-  (append-action focus "enable")
-  (append-action say "acknowledge_name_last")
-  (if (not (next-goal-is-talk ?step)) then
-    (append-action focus "disable")))
+  ; Mantener la atencion durante pregunta, escucha y confirmacion del nombre.
+  (append-dialogue say "ask_name")
+  (append-dialogue listen "guest_name_last")
+  (append-dialogue say "acknowledge_name_last"))
 
 
 (defrule process-find-known-named-person
@@ -822,9 +871,7 @@
   ; real guardado por FindPerson/Listen en vez de registrar otro anybody.
   (append-action find_person ?source)
   (remember-last-person ?target ?source "last" "")
-  (append-action focus "enable")
-  (append-action say "acknowledge_name_last")
-  (append-action focus "disable"))
+  (append-dialogue say "acknowledge_name_last"))
 
 
 (defrule process-find-context-person
@@ -851,8 +898,7 @@
     else
     (append-action find_person "anybody")
     (assert (visual-person-found (target ?target) (source "guest_last")))
-    (remember-last-person ?target "guest_last" "last" ""))
-  (append-action focus "enable"))
+    (remember-last-person ?target "guest_last" "last" "")))
 
 (defrule process-find-object
   (declare (salience 180))
@@ -982,11 +1028,9 @@
       (append-action find_person "anybody")
       (assert (visual-person-found (target ?dest) (source "guest_last")))
       (remember-last-person ?dest "guest_last" "last" "")
-      (append-action say "ask_name")
-      (append-action listen "guest_name_last")
-      (append-action focus "enable")
-      (append-action say "acknowledge_name_last")
-      (append-action focus "disable")
+      (append-dialogue say "ask_name")
+      (append-dialogue listen "guest_name_last")
+      (append-dialogue say "acknowledge_name_last")
       (append-action approach "guest_last")
       else
       (append-action find_person (person-id ?dest))
@@ -1053,10 +1097,10 @@
   (retract ?g)
   (retract ?st)
   (append-say (guide-intro-text ?person ?dest))
-  (append-action say (guide-start-text ?dest))
+  (select-person ?person)
+  (append-dialogue say (guide-start-text ?dest))
   (append-action go_to ?dest)
   (append-action say (guide-finished-text ?person ?dest))
-  (append-action focus "disable")
   (assert (current-state (location ?dest) (holding ?held))))
 
 (defrule process-follow
@@ -1070,34 +1114,27 @@
     (append-say (str-cat "I will follow " ?person " to " ?dest))
     else
     (append-say (str-cat "I will follow " ?person)))
-  (bind ?focus_needed TRUE)
   (bind ?known (find-all-facts ((?vp visual-person-found)) (eq ?vp:target ?person)))
   (if (> (length$ ?known) 0) then
     (bind ?found (nth$ 1 ?known))
     (bind ?source (fact-slot-value ?found source))
     (if (not (customer-source ?source)) then
-      (append-action approach ?source)
-      else
-      (bind ?focus_needed FALSE))
+      (append-action approach ?source))
     else
     (append-action find_person "anybody")
     (assert (visual-person-found (target ?person) (source "guest_last")))
     (remember-last-person ?person "guest_last" "last" "")
     (if (known-person-name ?person) then
-      (append-action say "ask_name")
-      (append-action listen "guest_name_last")
-      (append-action focus "enable")
-      (append-action say "acknowledge_name_last")
-      (append-action focus "disable"))
+      (append-dialogue say "ask_name")
+      (append-dialogue listen "guest_name_last")
+      (append-dialogue say "acknowledge_name_last"))
     (append-action approach "guest_last"))
-  (if ?focus_needed then
-    (append-action focus "enable"))
+  (select-person ?person)
   (if (neq ?dest "") then
-    (append-action say (str-cat "I will follow " ?person " to " ?dest))
-    (append-action say (str-cat "instruct_follow_to_" ?dest))
+    (append-dialogue say (str-cat "I will follow " ?person " to " ?dest))
+    (append-dialogue say (str-cat "instruct_follow_to_" ?dest))
     else
-    (append-action say "instruct_follow_only"))
-  (append-action focus "disable"))
+    (append-dialogue say "instruct_follow_only")))
 
 (defrule process-count
   (declare (salience 180))
@@ -1116,9 +1153,8 @@
   (if (neq ?loc "instruction_point") then
     (append-say "I will return to the instruction point to report the count")
     (append-action go_to "instruction_point"))
-  (append-action focus "enable")
-  (append-action say "count_category")
-  (append-action focus "disable")
+  (set-interlocutor "operator|host_1")
+  (append-dialogue say "count_category")
   (assert (current-state (location "instruction_point") (holding ?held))))
 
 (defrule process-tell
@@ -1151,16 +1187,16 @@
 	    (append-focused-say ?answer)
 	    else
 	    (if (eq ?info "name") then
-	      (append-action say "saved_name")
+	      (append-dialogue say "saved_name")
 	      else
 	    (if (neq ?qualifier "") then
-	      (append-action say ?qualifier)
+	      (append-dialogue say ?qualifier)
 	      else
 	      (bind ?talk_answer (talk-answer-key ?info))
 	      (if (neq ?talk_answer "") then
 	        (append-focused-say ?talk_answer)
 	        else
-	        (append-action say ?info))))))
+	        (append-dialogue say ?info))))))
 
 (defrule process-save
   (declare (salience 180))
@@ -1185,11 +1221,9 @@
 	      (append-action find_person "anybody")
 	      (assert (visual-person-found (target "person") (source "guest_last")))
 	      (remember-last-person "person" "guest_last" "last" ""))
-	    (append-action say "ask_name")
-	    (append-action listen "guest_name_last")
-	    (append-action focus "enable")
-	    (append-action say "acknowledge_name_last")
-	    (append-action focus "disable")
+	    (append-dialogue say "ask_name")
+	    (append-dialogue listen "guest_name_last")
+	    (append-dialogue say "acknowledge_name_last")
     else
     (if (or (contains-text ?info "gesture") (contains-text ?info "pose")) then
       (bind ?last (find-all-facts ((?lp last-person-context)) TRUE))
@@ -1227,9 +1261,8 @@
   =>
   (retract ?g)
   (append-say "I will answer the question")
-  (append-action listen "answer_question")
-  (append-action say "answer_question")
-  (append-action focus "disable"))
+  (append-dialogue listen "answer_question")
+  (append-dialogue say "answer_question"))
 
 (defrule process-greet
   (declare (salience 180))
@@ -1248,15 +1281,12 @@
     (assert (visual-person-found (target ?person) (source "guest_last")))
     (remember-last-person ?person "guest_last" "last" "")
     (if (known-person-name ?person) then
-      (append-action say "ask_name")
-      (append-action listen "guest_name_last")
-      (append-action focus "enable")
-      (append-action say "acknowledge_name_last")
-      (append-action focus "disable"))
+      (append-dialogue say "ask_name")
+      (append-dialogue listen "guest_name_last")
+      (append-dialogue say "acknowledge_name_last"))
     (append-action approach "guest_last"))
-  (append-action focus "enable")
-  (append-action say "greet")
-  (append-action focus "disable"))
+  (select-person ?person)
+  (append-dialogue say "greet"))
 
 (defrule process-unsupported-goal
   (declare (salience 10))
@@ -1274,18 +1304,25 @@
   (not (final-steps-added))
   ?st <- (current-state (location ?loc) (holding ?held))
   =>
-  (bind ?focus (find-all-facts ((?fa focus-active)) TRUE))
-  (if (> (length$ ?focus) 0) then
-    (append-action focus "disable"))
   (if (neq ?loc "instruction_point") then
     (append-action go_to "instruction_point"))
   (append-action say "task completed")
   (assert (final-steps-added)))
 
+(defrule organize-interaction-focus
+  (declare (salience 7))
+  (planning-ready)
+  (not (gpsr-goal))
+  (final-steps-added)
+  (not (focus-normalized))
+  =>
+  (normalize-interactions))
+
 (defrule serialize-action-step
   (declare (salience 5))
   (planning-ready)
-  ?as <- (action-step (step ?step) (action ?action) (arg ?arg))
+  ?as <- (finalized-step (step ?step) (action ?action) (arg ?arg))
+  (focus-normalized)
   (not (gpsr-goal))
   (final-steps-added)
   =>
@@ -1301,6 +1338,8 @@
   (planning-ready)
   (not (gpsr-goal))
   (not (action-step))
+  (not (finalized-step))
+  (focus-normalized)
   (final-steps-added)
   (not (plan-note (state GPSR_DONE)))
   =>
