@@ -1,5 +1,7 @@
 # Planning con ROS 2 y CLIPS
 
+Revisión documental: **4 de noviembre de 2026**, contrastada con fuentes y reglas locales.
+
 ## Descripción
 
 Este repositorio implementa el planificador simbólico usado por Justina. El
@@ -23,7 +25,7 @@ clips_node.py
   reinicia CLIPS, inserta hechos y dispara planificación
       ↓
 goals_planning.clp
-  expande goals → action-step → ros-message
+  expande goals → action-step → finalized-step → ros-message
       ↓
 clips_node.py
   ordena, publica /clips/results y escribe el log
@@ -204,7 +206,9 @@ guide(Laura, to=inspection point)
 follow(Matthew, kitchen)
 follow(Matthew, to=kitchen)
 
+place(cup, at=cabinet)
 place(cup, on=table)
+place(cup, in=box)
 place(cup, table)
 ```
 
@@ -223,7 +227,9 @@ argumento se interpreta como la relación `to`.
 | Calificador | Ejemplo | Uso |
 |---|---|---|
 | `to` | `follow(person, to=sofa)` | Destinatario o destino |
+| `at` | `place(cup, at=cabinet)` | Destino de colocación |
 | `on` | `place(cup, on=table)` | Superficie de colocación |
+| `in` | `place(cup, in=box)` | Destino contenedor |
 | `gesture` | `find(person, gesture=waving)` | Búsqueda visual por gesto |
 | `pose` | `find(person, pose=sitting)` | Búsqueda visual por pose |
 | `wearing` | `find(person, wearing=red shirt)` | Búsqueda visual por vestimenta |
@@ -342,8 +348,9 @@ dos veces.
 
 ## Funcionamiento de `clips_node`
 
-CLIPS no es thread-safe. Todos los accesos al entorno se encolan y se ejecutan
-secuencialmente en un único worker:
+CLIPS no es thread-safe. Las operaciones de planificación se encolan y se ejecutan
+secuencialmente en un único worker; la creación del entorno y la carga inicial
+de reglas ocurren durante la construcción del nodo:
 
 ```text
 callback ROS 2
@@ -398,7 +405,7 @@ Cada regla retira el `gpsr-goal` procesado y agrega uno o más `action-step`.
 |---|---|
 | `go(destino)` | `go_to`, confirmación de llegada |
 | `find(objeto)` | `find_object` y análisis opcional |
-| `find(persona)` | `find_person` o `find_pose`, `approach`, `focus` |
+| `find(persona)` | `find_person` o `find_pose`, aproximación según contexto y diálogo de nombre cuando corresponde |
 | `take(objeto)` | `take`, si la manipulación está habilitada |
 | `place(objeto, destino)` | navegación opcional, `find_space`, `drop` |
 | `deliver(objeto, persona)` | localización del destinatario, `approach`, `give` |
@@ -427,7 +434,8 @@ de manipulación. Otros hechos recuerdan personas y análisis visuales:
 - `visual-person-found`: relaciona un target con `guest_N` o `customer_N`;
 - `last-person-context`: conserva la última persona observada;
 - `visual-analysis`: permite reutilizar un análisis de objetos;
-- `focus-active`: registra si el robot mantiene el foco en una persona.
+- `interaction-context`: conserva la identidad simbólica del interlocutor;
+- `finalized-step` y `focus-normalized`: resultado y marca de la normalización del diálogo.
 
 ### Personas genéricas, nombradas y visuales
 
@@ -453,7 +461,7 @@ En este modo las reglas generan el flujo real de `take`, `find_space`, `drop` y
 
 Para trabajar sin comandos de brazo se puede cambiar el valor a `FALSE` o
 configurar `manipulation-mode` antes de iniciar la planificación. En ese modo
-seguro, `take` se reemplaza por una explicación hablada y las acciones
+sin manipulación, `take` se reemplaza por una explicación hablada y las acciones
 posteriores que dependen de cargar ese objeto informan que no pueden
 realizarse, manteniendo ejecutable el resto del plan.
 
@@ -477,20 +485,25 @@ producir primero una acción `go_to`.
 `floor` no necesita `find_space`; las demás superficies generan normalmente
 `find_space` antes de `drop`.
 
-### Finalización y serialización
+### Finalización, foco y serialización
 
-Cuando ya no quedan metas:
+Cuando ya no quedan metas, `add-final-return` agrega el regreso a
+`instruction_point` cuando corresponde y `say "task completed"` como última
+operación. No lo agrega al grupo inicial de anuncios.
 
-1. se desactiva el foco si continúa activo;
-2. se agrega un regreso a `instruction_point` si el estado indica otra
-   ubicación;
-3. se agrega `say "task completed"`;
-4. cada `action-step` se convierte en un `ros-message`;
-5. se agrega la nota `GPSR_DONE`.
+Después, `organize-interaction-focus` llama a `normalize-interactions`: ordena
+los `action-step`, conserva los anuncios desde `1` y vuelve a numerar las
+operaciones desde `1001`. Inserta un solo ciclo de `focus enable/disable` por
+secuencia adyacente de `say`/`listen` dirigida al mismo interlocutor, incluso
+cuando procede de metas distintas. Un cambio de persona, anuncio general o
+acción no dialogada cierra el ciclo. No activa foco para el anuncio final.
 
-Los anuncios generales creados con `append-say` usan pasos desde `1`. Las
-acciones operativas usan pasos desde `1001`. Al ordenar el resultado, el robot
-primero puede anunciar lo que hará y después ejecutar las acciones concretas.
+`append-dialogue` guarda una anotación interna de interlocutor. Esa anotación
+no se publica como argumento del executor. `append-action` ignora intentos de
+agregar `focus` directamente: la pasada final es la única autoridad del foco.
+Los pasos normalizados se almacenan como `finalized-step`; después se serializan
+a `ros-message` y se crea `GPSR_DONE`. No existe en esta versión el mecanismo
+anterior basado en `focus-active`.
 
 ## Formato del plan publicado
 
@@ -510,7 +523,8 @@ Paso 1005: Justina say task completed
 ```
 
 El plan se publica como un solo `std_msgs/msg/String`, separado por saltos de
-línea. Después de publicarlo también se agrega a `plan_execution.log`. El nodo
+línea. Después de publicarlo también se agrega a `plan_execution.log`. El archivo
+se vacía al iniciar el nodo: no es un diario histórico persistente entre reinicios. El nodo
 busca primero un directorio de trabajo conocido y, si no lo encuentra, crea el
 log en el directorio actual.
 
@@ -519,7 +533,10 @@ log en el directorio actual.
 ### Compilar
 
 ```bash
-colcon build --packages-select \
+source /opt/ros/jazzy/setup.bash
+cd ~/Justina
+colcon build --packages-up-to \
+  knowledge_bank \
   clips_interfaces \
   clips_node \
   clips_launch \
@@ -552,9 +569,9 @@ ros2 launch planning_tools planning.launch.xml \
   plan_name:=goals
 ```
 
-`planning.launch.xml` tiene actualmente `default_plan` como valor
-predeterminado de `plan_name`, por lo que se debe pasar explícitamente
-`plan_name:=goals` para cargar `goals_planning.clp`.
+`planning.launch.xml` y `clips.launch.xml` usan `plan_name=goals` por defecto.
+El nodo ejecutado directamente declara `plan_name=default`; en ese caso sí es
+necesario pasar `-p plan_name:=goals` para cargar `goals_planning.clp`.
 
 Para mostrar en pantalla los logs de CLIPS, cuyo valor predeterminado en este
 launch es `log`, se puede usar:
@@ -618,7 +635,9 @@ ros2 run planning_tools qwen_to_plan.py \
   "Go to the living room, find the waving person, and guide them to the inspection point"
 ```
 
-El script realiza automáticamente estas operaciones:
+Desde la raíz de `~/Justina`, ejecutar el script por su ruta
+`src/Planning/planning_tools/scripts/qwen_to_plan.py`, o utilizar `ros2 run`
+como arriba. El script realiza automáticamente estas operaciones:
 
 ```text
 comando en lenguaje natural
@@ -764,3 +783,53 @@ Tras la limpieza, recompilar los paquetes afectados y volver a cargar
 `install/setup.bash`. Los artefactos de compilaciones anteriores en `build/`
 e `install/` no forman parte de esta limpieza de fuentes y pueden conservar
 copias de los ejecutables retirados hasta limpiar o renovar esos artefactos.
+
+## Carga de reglas y directorio de trabajo
+
+`RuleLoader` busca reglas respecto al **directorio de trabajo**, no al share de
+ament: `clips/clips_node/clips_rules`, `src/Planning/clips/clips_node/clips_rules`
+y `src/clips/clips_node/clips_rules`. Ejecutar desde `~/Justina` permite usar
+la segunda ruta. Un prefijo único selecciona `plan_name*.clp`; varios términos
+separados por espacios o `_` deben aparecer todos en el nombre del archivo.
+Un fallo de carga se registra en logs; que el nodo publique servicios no
+certifica que las reglas se hayan cargado correctamente.
+
+`clips.launch.xml` lanzado solo no añade `/planning`, mientras el conversor
+utiliza destinos absolutos `/planning/clips/...`. Para el flujo integrado usar
+`planning_tools`, o añadir el namespace al lanzar el motor directamente.
+
+## Contratos y limitaciones comprobadas
+
+- Los servicios CLIPS responden al **encolar** el trabajo. `OK`, `successful=true`
+  o `success=true` no certifican que el worker haya terminado ni que la orden
+  se cumpla; sus errores posteriores se registran en logs. El plan llega por topic.
+- La cola serializa operaciones, pero la pareja «reset/lote → inicio» no es una
+  transacción con identificador de solicitud. Usar un solo coordinador para evitar
+  mezclar lotes o atribuir a una orden un plan ajeno. No hay cancelación de trabajo
+  ni plazo duro del motor expuesto por estos servicios.
+- El parser ROS infiere `kind` mediante contexto y heurísticas; no aplica el
+  validador canónico del repositorio de entrenamiento. Un `kind=object` explícito
+  no gobierna esa clasificación. La capitalización puede clasificar un objeto
+  como persona. Documentar y comprobar esa diferencia en cualquier comparación.
+- Se conserva un único calificador visual según `gesture`, `pose`, `wearing`,
+  `property`; combinar atributos en JSON no acredita que CLIPS los exija todos.
+- `count-query` genera `count_person` o `count_<target>` e ignora el calificador:
+  no implementa conteo filtrado por ropa, pose o gesto.
+- Peso y grosor pueden convertirse a extremos visuales de tamaño. Es una
+  aproximación implementada, no una medición de peso ni cumplimiento estricto.
+- Una meta no soportada produce una explicación y el cierre puede incluir
+  `task completed` igualmente. `GPSR_DONE` indica fin de expansión, no éxito
+  semántico ni físico. `place/drop` controlan el objeto cargado; `deliver` no
+  impone por sí solo una adquisición previa equivalente.
+- El gestor entrega instrucciones y sustituye su cola ante un nuevo plan; no
+  confirma ejecución ni valida semánticamente la tarea. Los remapeos integrados
+  se muestran en [planning_tools](../planning_tools/README.md#conectar-el-gestor-de-instrucciones).
+
+## Verificación de esta revisión
+
+Se cargaron las reglas locales con Clipspy y se generaron los cuatro planes
+reproducidos en la [guía detallada](docs/goals_planning_rules.md). Se comprobó
+consumo de metas, notas START/DONE y un único `task completed` al final. Esto no
+inicia ROS, consulta Qwen ni certifica compilación completa o ejecución física.
+Clipspy emitió avisos nativos `ENVRNMNT8` al liberar los entornos; la revisión
+documental no modifica ni resuelve esa limitación.
