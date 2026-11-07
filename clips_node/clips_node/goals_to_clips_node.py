@@ -161,12 +161,21 @@ class GoalParser:
 
         Por ejemplo, si una meta entrega un objeto a Laura, cualquier
         ``find(Laura)`` del mismo plan debe interpretarse como búsqueda de una
-        persona aunque no incluya un atributo visual explícito.
+        persona aunque no incluya un atributo visual explícito. En find/count,
+        un kind declarado tiene prioridad sobre las heurísticas y el contexto.
         """
 
         person_targets = {"person", "me", "user"}
 
         for goal in goals:
+            explicit_kind = (goal.kwargs or {}).get("kind")
+            if goal.name in {"find", "count"} and explicit_kind is not None:
+                if explicit_kind not in {"person", "object"}:
+                    raise ValueError("kind must be person or object")
+                if explicit_kind == "person":
+                    person_targets.add(goal.target)
+                # Un objeto con mayúscula no aporta evidencia de persona.
+                continue
             if goal.name in {"follow", "guide", "greet"} and goal.target:
                 person_targets.add(goal.target)
             if goal.name == "find" and self._looks_like_person_name(goal.target):
@@ -179,7 +188,10 @@ class GoalParser:
                     person_targets.add(destination)
 
         for goal in goals:
-            if goal.name in {"go", "place", "drop"}:
+            explicit_kind = (goal.kwargs or {}).get("kind")
+            if goal.name in {"find", "count"} and explicit_kind is not None:
+                goal.kind = explicit_kind
+            elif goal.name in {"go", "place", "drop"}:
                 goal.kind = "location"
             elif goal.name in {"tell", "talk", "save", "answer_question"}:
                 goal.kind = "info"

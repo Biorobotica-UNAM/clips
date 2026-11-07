@@ -60,7 +60,8 @@
 (deffunction named-person-goal (?target ?kind)
   (return (and
     (named-person-target ?target)
-    (or (eq ?kind person) (known-person-name ?target)))))
+    (or (eq ?kind person)
+        (and (eq ?kind unknown) (known-person-name ?target))))))
 
 (deftemplate start
   (slot name))
@@ -881,7 +882,7 @@
           (step ?step)
           (name find)
           (target ?target&:(target-is-person-by-plan-context ?target))
-          (kind ?kind&~person)
+          (kind unknown)
           (qualifier ?qualifier))
   (not (gpsr-goal (step ?prev&:(< ?prev ?step))))
   =>
